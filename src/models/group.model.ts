@@ -1,13 +1,8 @@
-import mongoose, { Schema, Document } from "mongoose";
+import { Schema, model } from "mongoose";
 
-export interface IGroup extends Document {
-  name: string;
-  participants: string[];
-}
-
-const GroupSchema = new Schema<IGroup>({
-  name: { type: String, required: true, unique: true },
-  participants: [{ type: String, required: true }],
+const groupSchema = new Schema({
+  name: String,
+  members: [String], // Array of userIds
 });
 
-export const Group = mongoose.model<IGroup>("Group", GroupSchema);
+export default model("Group", groupSchema);
