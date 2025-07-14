@@ -1,16 +1,30 @@
-import express, { Request, Response } from "express";
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import dotenv from "dotenv";
+import cors from "cors";
+import connectDB from "../config/database";
+import { groupRoutes } from "../routes/group.routes";
+import { chatSocket } from "../sockets";
+import { messageRoutes } from "../routes/massage.routes";
+
+dotenv.config();
+connectDB();
 
 const app = express();
-const port = process.env.PORT || 5002;
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
+chatSocket(io);
+
+app.use(cors());
 app.use(express.json());
 
-app.get("/", (req: Request, res: Response) => {
-  res.send("Hello World!");
+app.use("/groups", groupRoutes);
+app.use("/messages", messageRoutes);
+app.get("/", (req, res) => {
+  res.send("Running !!");
 });
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
-
-export default app;
+const PORT = process.env.PORT || 5002;
+server.listen(PORT, () => console.log(`Chat Service running on port ${PORT}`));
