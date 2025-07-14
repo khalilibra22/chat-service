@@ -22,6 +22,9 @@ app.use(express.json());
 
 app.use("/groups", groupRoutes);
 app.use("/messages", messageRoutes);
+app.get("/", (req, res) => {
+  res.send("Running !!");
+});
 
 const PORT = process.env.PORT || 5002;
 server.listen(PORT, () => console.log(`Chat Service running on port ${PORT}`));
