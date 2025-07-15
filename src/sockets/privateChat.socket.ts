@@ -1,5 +1,7 @@
 import { Server, Socket } from "socket.io";
-import Message from "../models/message.model";
+import { MessageService } from "../services/message.service";
+
+const messageService = new MessageService();
 
 export const privateChatHandler = (io: Server, socket: Socket) => {
   // Join personal room
@@ -11,12 +13,13 @@ export const privateChatHandler = (io: Server, socket: Socket) => {
   // Handle private message
   socket.on("private-message", async ({ to, from, content }) => {
     try {
-      const message = await Message.create({
+      const messageData = {
         senderId: from,
         receiverId: to,
         content,
-        chatType: "private",
-      });
+      };
+
+      const message = await messageService.createPrivateMessage(messageData);
 
       io.to(to).emit("receive-private-message", message);
       io.to(from).emit("receive-private-message", message);

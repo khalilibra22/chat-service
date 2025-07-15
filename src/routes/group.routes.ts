@@ -1,18 +1,12 @@
 import express from "express";
-import Group from "../models/group.model";
+import { GroupController } from "../controllers/group.controller";
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
-  const { name, members } = req.body;
-  const group = await Group.create({ name, members });
-  res.json(group);
-});
+const groupController = new GroupController();
 
-router.get("/", async (req, res) => {
-  const userId = (req as any).user.id;
-  const groups = await Group.find({ members: userId });
-  res.json(groups);
-});
+router.post("/", async (req, res) => groupController.createChatGroup(req, res));
+
+router.get("/", async (req, res) => groupController.getUserGroups(req, res));
 
 export { router as groupRoutes };

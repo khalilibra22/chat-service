@@ -1,5 +1,8 @@
 import { Server, Socket } from "socket.io";
 import Message from "../models/message.model";
+import { MessageService } from "../services/message.service";
+
+const messageService = new MessageService();
 
 export const groupChatHandler = (io: Server, socket: Socket) => {
   // Join group room
@@ -11,12 +14,12 @@ export const groupChatHandler = (io: Server, socket: Socket) => {
   // Handle group message
   socket.on("group-message", async ({ groupId, from, content }) => {
     try {
-      const message = await Message.create({
+      const messageData = {
         senderId: from,
         groupId,
         content,
-        chatType: "group",
-      });
+      };
+      const message = await messageService.createGroupMessage(messageData);
 
       socket.to(groupId).emit("receive-group-message", message);
       io.to(from).emit("receive-group-message", message);
