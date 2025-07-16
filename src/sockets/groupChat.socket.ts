@@ -1,5 +1,4 @@
 import { Server, Socket } from "socket.io";
-import Message from "../models/message.model";
 import { MessageService } from "../services/message.service";
 
 const messageService = new MessageService();
