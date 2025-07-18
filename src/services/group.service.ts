@@ -19,4 +19,15 @@ export class GroupService {
       throw new Error("Error fetching user groups");
     }
   }
+
+  async isUserInGroup(userId: string, groupId: string): Promise<boolean> {
+    try {
+      const group = await Group.findById(groupId);
+      if (!group) return false;
+      return group.members.includes(userId);
+    } catch (error) {
+      console.error(error);
+      throw new Error("Error checking group membership");
+    }
+  }
 }

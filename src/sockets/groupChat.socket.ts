@@ -1,29 +1,58 @@
 import { Server, Socket } from "socket.io";
 import { MessageService } from "../services/message.service";
+import { ValidationMiddleware } from "../utils/validation.middleware";
+import { groupSocketMessageValidation } from "../validations/message.validation";
+import { GroupService } from "../services/group.service";
 
 const messageService = new MessageService();
+const groupService = new GroupService();
 
 export const groupChatHandler = (io: Server, socket: Socket) => {
   // Join group room
   socket.on("join-group", (groupId: string) => {
+    const isGroupMember = groupService.isUserInGroup(
+      groupId,
+      socket.data.userId
+    );
+    if (!isGroupMember) {
+      console.error(
+        `User ${socket.data.userId} is not a member of group ${groupId}`
+      );
+      return;
+    }
     socket.join(groupId);
     console.log(`Socket ${socket.id} joined group ${groupId}`);
   });
 
   // Handle group message
-  socket.on("group-message", async ({ groupId, from, content }) => {
-    try {
-      const messageData = {
-        senderId: from,
-        groupId,
-        content,
-      };
-      const message = await messageService.createGroupMessage(messageData);
+  socket.on("group-message", async (data, callback) => {
+    const validate = ValidationMiddleware.validateSocket(
+      groupSocketMessageValidation
+    );
 
-      socket.to(groupId).emit("receive-group-message", message);
-      io.to(from).emit("receive-group-message", message);
-    } catch (error) {
-      console.error("Group message error:", error);
-    }
+    validate(data, async (error) => {
+      if (error) {
+        if (callback) callback({ error });
+        return;
+      }
+
+      try {
+        const { groupId, content } = data;
+        const messageData = {
+          senderId: socket.data.userId,
+          groupId,
+          content,
+        };
+        const message = await messageService.createGroupMessage(messageData);
+
+        socket.to(groupId).emit("receive-group-message", message);
+        io.to(socket.data.userId).emit("receive-group-message", message);
+
+        if (callback) callback({ success: true, message });
+      } catch (error) {
+        console.error("Group message error:", error);
+        if (callback) callback({ error: "Failed to send message" });
+      }
+    });
   });
 };

@@ -33,5 +33,23 @@ class AuthMiddleware {
       return;
     }
   }
+
+  static async verifySocketToken(
+    socket: any,
+    next: (err?: any) => void
+  ): Promise<void> {
+    try {
+      const token = socket.handshake.auth.token;
+      if (!token) {
+        return next(new Error("Invalid or expired token"));
+      }
+
+      const decoded = await AuthMiddleware.decodeToken(token);
+      socket.data.userId = decoded.id;
+      next();
+    } catch (error) {
+      return next(new Error("Invalid or expired token"));
+    }
+  }
 }
 export { AuthMiddleware };

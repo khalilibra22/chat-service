@@ -7,6 +7,7 @@ import connectDB from "../config/database";
 import { groupRoutes } from "../routes/group.routes";
 import { chatSocket } from "../sockets";
 import { messageRoutes } from "../routes/message.routes";
+import { AuthMiddleware } from "../utils/auth.middleware";
 
 dotenv.config();
 connectDB();
@@ -14,7 +15,7 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
-
+io.use(AuthMiddleware.verifySocketToken);
 chatSocket(io);
 
 app.use(cors());

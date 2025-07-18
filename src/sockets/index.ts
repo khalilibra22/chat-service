@@ -4,7 +4,8 @@ import { groupChatHandler } from "./groupChat.socket";
 
 export const chatSocket = (io: Server) => {
   io.on("connection", (socket: Socket) => {
-    console.log("Socket connected:", socket.id);
+    const user = socket.data.userId;
+    console.log(`Socket connected: ${user}`);
 
     privateChatHandler(io, socket);
     groupChatHandler(io, socket);

@@ -10,12 +10,10 @@ export const groupApiMessageValidation = Joi.object({
 
 export const privateSocketMessageValidation = Joi.object({
   to: Joi.string().required(),
-  from: Joi.string().required(),
   content: Joi.string().min(1).max(1000).required(),
 });
 
 export const groupSocketMessageValidation = Joi.object({
   groupId: Joi.string().required(),
-  from: Joi.string().required(),
   content: Joi.string().min(1).max(1000).required(),
 });

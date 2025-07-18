@@ -1,18 +1,15 @@
 import { Server, Socket } from "socket.io";
 import { MessageService } from "../services/message.service";
 import { ValidationMiddleware } from "../utils/validation.middleware";
-import {
-  privateApiMessageValidation,
-  privateSocketMessageValidation,
-} from "../validations/message.validation";
+import { privateSocketMessageValidation } from "../validations/message.validation";
 
 const messageService = new MessageService();
 
 export const privateChatHandler = (io: Server, socket: Socket) => {
   // Join personal room
-  socket.on("join", (userId: string) => {
-    socket.join(userId);
-    console.log(`Socket ${socket.id} joined user room ${userId}`);
+  socket.on("join", () => {
+    socket.join(socket.data.userId);
+    console.log(`Socket ${socket.id} joined user room ${socket.data.userId}`);
   });
 
   // Handle private message
@@ -28,9 +25,9 @@ export const privateChatHandler = (io: Server, socket: Socket) => {
       }
 
       try {
-        const { to, from, content } = data;
+        const { to, content } = data;
         const messageData = {
-          senderId: from,
+          senderId: socket.data.userId,
           receiverId: to,
           content,
         };
@@ -38,7 +35,7 @@ export const privateChatHandler = (io: Server, socket: Socket) => {
         const message = await messageService.createPrivateMessage(messageData);
 
         io.to(to).emit("receive-private-message", message);
-        io.to(from).emit("receive-private-message", message);
+        io.to(socket.data.userId).emit("receive-private-message", message);
 
         if (callback) callback({ success: true, message });
       } catch (error) {
