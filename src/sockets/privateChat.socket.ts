@@ -2,6 +2,8 @@ import { Server, Socket } from "socket.io";
 import { MessageService } from "../services/message.service";
 import { ValidationMiddleware } from "../utils/validation.middleware";
 import { privateSocketMessageValidation } from "../validations/message.validation";
+import { plainToInstance } from "class-transformer";
+import { MessageDto } from "../dtos/message.dto";
 
 const messageService = new MessageService();
 
@@ -34,10 +36,14 @@ export const privateChatHandler = (io: Server, socket: Socket) => {
 
         const message = await messageService.createPrivateMessage(messageData);
 
-        io.to(to).emit("receive-private-message", message);
-        io.to(socket.data.userId).emit("receive-private-message", message);
+        const messageDto = plainToInstance(MessageDto, message, {
+          excludeExtraneousValues: true,
+        });
 
-        if (callback) callback({ success: true, message });
+        io.to(to).emit("receive-private-message", messageDto);
+        io.to(socket.data.userId).emit("receive-private-message", messageDto);
+
+        //if (callback) callback({ success: true, message });
       } catch (error) {
         console.error("Private message error:", error);
         if (callback) callback({ error: "Failed to send message" });

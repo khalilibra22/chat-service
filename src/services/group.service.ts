@@ -1,4 +1,5 @@
 import Group from "../models/group.model";
+import { Types } from "mongoose";
 
 export class GroupService {
   async createGroup(groupData: any): Promise<any> {
@@ -22,9 +23,16 @@ export class GroupService {
 
   async isUserInGroup(userId: string, groupId: string): Promise<boolean> {
     try {
-      const group = await Group.findById(groupId);
+      // Check if groupId is a valid ObjectId, if not use it as a custom field
+      const query = Types.ObjectId.isValid(groupId)
+        ? { _id: groupId }
+        : { groupId: groupId }; // Assuming you have a custom groupId field
+
+      const group = await Group.findOne(query);
       if (!group) return false;
-      return group.members.includes(userId);
+      return group.members.some(
+        (memberId) => memberId.toString() === userId.toString()
+      );
     } catch (error) {
       console.error(error);
       throw new Error("Error checking group membership");

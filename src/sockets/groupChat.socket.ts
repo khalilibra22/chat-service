@@ -9,17 +9,20 @@ const groupService = new GroupService();
 
 export const groupChatHandler = (io: Server, socket: Socket) => {
   // Join group room
-  socket.on("join-group", (groupId: string) => {
-    const isGroupMember = groupService.isUserInGroup(
-      groupId,
-      socket.data.userId
-    );
-    if (!isGroupMember) {
-      console.error(
-        `User ${socket.data.userId} is not a member of group ${groupId}`
-      );
-      return;
-    }
+  socket.on("join-group", async (groupId: string) => {
+    console.log(`Socket ${socket.id} joining group ${groupId}`);
+    console.log(`User ID: ${socket.data.userId}`);
+    // const isGroupMember = await groupService.isUserInGroup(
+    //   groupId,
+    //   socket.data.userId
+    // );
+    // console.log(`Is user in group: ${isGroupMember}`);
+    // if (!isGroupMember) {
+    //   console.error(
+    //     `User ${socket.data.userId} is not a member of group ${groupId}`
+    //   );
+    //   return;
+    // }
     socket.join(groupId);
     console.log(`Socket ${socket.id} joined group ${groupId}`);
   });
