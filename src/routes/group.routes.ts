@@ -1,12 +1,13 @@
 import express from "express";
 import { GroupController } from "../controllers/group.controller";
+import { AuthMiddleware } from "../utils/auth.middleware";
 
 const router = express.Router();
 
 const groupController = new GroupController();
 
-router.post("/", async (req, res) => groupController.createChatGroup(req, res));
+router.post("/", AuthMiddleware.verifyToken, groupController.createChatGroup);
 
-router.get("/", async (req, res) => groupController.getUserGroups(req, res));
+router.get("/", AuthMiddleware.verifyToken, groupController.getUserGroups);
 
 export { router as groupRoutes };

@@ -26,7 +26,7 @@ class AuthMiddleware {
       }
 
       const decoded = await AuthMiddleware.decodeToken(token);
-      req.params.userId = decoded.id;
+      (req as any).user = decoded;
       next();
     } catch (error) {
       res.status(401).json({ message: "Invalid or expired token" });

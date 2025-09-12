@@ -23,16 +23,11 @@ export class GroupService {
 
   async isUserInGroup(userId: string, groupId: string): Promise<boolean> {
     try {
-      // Check if groupId is a valid ObjectId, if not use it as a custom field
-      const query = Types.ObjectId.isValid(groupId)
-        ? { _id: groupId }
-        : { groupId: groupId }; // Assuming you have a custom groupId field
-
-      const group = await Group.findOne(query);
-      if (!group) return false;
-      return group.members.some(
-        (memberId) => memberId.toString() === userId.toString()
-      );
+      if (!Types.ObjectId.isValid(groupId)) {
+        return false;
+      }
+      const exists = await Group.exists({ _id: groupId, members: userId });
+      return !!exists;
     } catch (error) {
       console.error(error);
       throw new Error("Error checking group membership");

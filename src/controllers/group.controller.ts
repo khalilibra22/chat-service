@@ -7,7 +7,7 @@ export class GroupController {
     this.groupService = new GroupService();
   }
 
-  async createChatGroup(req: Request, res: Response): Promise<void> {
+  createChatGroup = async (req: Request, res: Response): Promise<void> => {
     try {
       const { name, members } = req.body;
       const group = await this.groupService.createGroup({ name, members });
@@ -16,9 +16,9 @@ export class GroupController {
       console.error(error);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  }
+  };
 
-  async getUserGroups(req: Request, res: Response): Promise<void> {
+  getUserGroups = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = (req as any).user.id;
       const groups = await this.groupService.getUserGroups(userId);
@@ -27,5 +27,5 @@ export class GroupController {
       console.error(error);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  }
+  };
 }

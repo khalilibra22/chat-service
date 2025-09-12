@@ -2,6 +2,9 @@ import { Expose } from "class-transformer";
 
 export class MessageDto {
   @Expose()
+  id?: string;
+
+  @Expose()
   content?: string;
 
   @Expose()
@@ -9,4 +12,10 @@ export class MessageDto {
 
   @Expose()
   senderId?: string;
+
+  @Expose()
+  receiverId?: string;
+
+  @Expose()
+  groupId?: string;
 }
