@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
-class AuthMiddleware {
+export class AuthMiddleware {
   static async decodeToken(token: string): Promise<any> {
     return new Promise((resolve, reject) => {
       try {
@@ -52,4 +52,3 @@ class AuthMiddleware {
     }
   }
 }
-export { AuthMiddleware };

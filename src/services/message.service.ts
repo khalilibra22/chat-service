@@ -1,7 +1,14 @@
 import Message from "../models/message.model";
+import { 
+  CreateMessageData, 
+  AllChatsResponse, 
+  PaginatedResponse, 
+  MessageHistoryParams, 
+  GroupMessageHistoryParams 
+} from "../types/chat.types";
 
 export class MessageService {
-  async createPrivateMessage(messageData: any): Promise<any> {
+  async createPrivateMessage(messageData: CreateMessageData): Promise<any> {
     try {
       const message = await Message.create({
         ...messageData,
@@ -14,7 +21,7 @@ export class MessageService {
     }
   }
 
-  async createGroupMessage(messageData: any): Promise<any> {
+  async createGroupMessage(messageData: CreateMessageData): Promise<any> {
     try {
       const message = await Message.create({
         ...messageData,
@@ -51,7 +58,7 @@ export class MessageService {
     userId2: string,
     page: number,
     limit: number
-  ): Promise<{ items: any[]; total: number; page: number; limit: number }> {
+  ): Promise<PaginatedResponse<any>> {
     try {
       const filter = {
         chatType: "private" as const,
@@ -64,8 +71,7 @@ export class MessageService {
       const items = await Message.find(filter)
         .sort({ timestamp: -1 })
         .skip((page - 1) * limit)
-        .limit(limit)
-        .sort({ timestamp: 1 });
+        .limit(limit);
       return { items, total, page, limit };
     } catch (error) {
       console.error(error);
@@ -73,24 +79,11 @@ export class MessageService {
     }
   }
 
-  async getGroupMessageHistory(groupId: string): Promise<any> {
-    try {
-      const messages = await Message.find({
-        chatType: "group",
-        groupId: groupId,
-      }).sort({ timestamp: 1 });
-      return messages;
-    } catch (error) {
-      console.error(error);
-      throw new Error("Error fetching group message history");
-    }
-  }
-
   async getGroupMessageHistoryPaginated(
     groupId: string,
     page: number,
     limit: number
-  ): Promise<{ items: any[]; total: number; page: number; limit: number }> {
+  ): Promise<PaginatedResponse<any>> {
     try {
       const filter = { chatType: "group" as const, groupId };
       const total = await Message.countDocuments(filter);
@@ -106,7 +99,7 @@ export class MessageService {
     }
   }
 
-  async getAllChats(userId: string): Promise<any> {
+  async getAllChats(userId: string): Promise<AllChatsResponse> {
     try {
       const privateChats = await Message.aggregate([
         {
@@ -115,7 +108,7 @@ export class MessageService {
             $or: [{ senderId: userId }, { receiverId: userId }],
           },
         },
-        { $sort: { timestamp: 1 } },
+        { $sort: { timestamp: -1 } },
         {
           $group: {
             _id: {
@@ -137,7 +130,7 @@ export class MessageService {
             senderId: userId,
           },
         },
-        { $sort: { timestamp: 1 } },
+        { $sort: { timestamp: -1 } },
         {
           $group: {
             _id: "$groupId",
