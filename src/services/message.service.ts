@@ -69,9 +69,9 @@ export class MessageService {
       };
       const total = await Message.countDocuments(filter);
       const items = await Message.find(filter)
-        .sort({ timestamp: -1 })
         .skip((page - 1) * limit)
-        .limit(limit);
+        .limit(limit)
+        .sort({ timestamp: -1 });
       return { items, total, page, limit };
     } catch (error) {
       console.error(error);
@@ -88,10 +88,9 @@ export class MessageService {
       const filter = { chatType: "group" as const, groupId };
       const total = await Message.countDocuments(filter);
       const items = await Message.find(filter)
-        .sort({ timestamp: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .sort({ timestamp: 1 });
+        .sort({ timestamp: -1 });
       return { items, total, page, limit };
     } catch (error) {
       console.error(error);

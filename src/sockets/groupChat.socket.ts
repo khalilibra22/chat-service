@@ -5,23 +5,30 @@ import { groupSocketMessageValidation } from "../validations/message.validation"
 import { GroupService } from "../services/group.service";
 import { plainToInstance } from "class-transformer";
 import { MessageDto } from "../dtos/message.dto";
-import { GroupMessageData, SocketUser, GroupTypingData } from "../types/chat.types";
+import { GroupMessageData, SocketUser, GroupTypingData, SocketUserGroup } from "../types/chat.types";
 
 const messageService = new MessageService();
 const groupService = new GroupService();
 
-export const groupChatHandler = (io: Server, socket: Socket & { data: SocketUser }) => {
+export const groupChatHandler = (io: Server, socket: Socket & { data: SocketUser & { groupId?: string } }) => {
   // Join group room
-  socket.on("join-group", async (groupId: string) => {
+  socket.on("join-group", async (data: { groupId: string }) => {
+    const groupId = data?.groupId;
+    const userId = socket.data.userId;
+    if (!groupId) {
+      console.error(`No groupId provided for join-group event by user ${userId}`);
+      return;
+    }
     console.log(`Socket ${socket.id} joining group ${groupId}`);
-    console.log(`User ID: ${socket.data.userId}`);
+    //console.log(`User ID: ${userId}`);
     const isGroupMember = await groupService.isUserInGroup(
-      socket.data.userId,
+      userId,
       groupId
     );
+    //console.log(`Is user ${userId} a group member: ${isGroupMember} for group ${groupId}`);
     if (!isGroupMember) {
       console.error(
-        `User ${socket.data.userId} is not a member of group ${groupId}`
+        `User ${userId} is not a member of group ${groupId}`
       );
       return;
     }
@@ -55,10 +62,10 @@ export const groupChatHandler = (io: Server, socket: Socket & { data: SocketUser
           excludeExtraneousValues: true,
         });
 
-        socket.to(groupId).emit("receive-group-message", messageDto);
-        io.to(socket.data.userId).emit("receive-group-message", messageDto);
+        // Emit to all group members, including the sender
+        io.to(groupId).emit("receive-group-message", messageDto);
 
-        if (callback) callback({ success: true, message: messageDto });
+        //if (callback) callback({ success: true, message: messageDto });
       } catch (error) {
         console.error("Group message error:", error);
         if (callback) callback({ error: "Failed to send message" });
@@ -77,7 +84,7 @@ export const groupChatHandler = (io: Server, socket: Socket & { data: SocketUser
     
     // Emit to all other members in the group (excluding sender)
     socket.to(data.groupId).emit("receive-group-typing", typingData);
-    console.log(`User ${socket.data.userId} started typing in group ${data.groupId}`);
+    //console.log(`User ${socket.data.userId} started typing in group ${data.groupId}`);
   });
 
   socket.on("group-typing-stop", (data: GroupTypingData) => {
@@ -90,6 +97,6 @@ export const groupChatHandler = (io: Server, socket: Socket & { data: SocketUser
     
     // Emit to all other members in the group (excluding sender)
     socket.to(data.groupId).emit("receive-group-typing", typingData);
-    console.log(`User ${socket.data.userId} stopped typing in group ${data.groupId}`);
+    //console.log(`User ${socket.data.userId} stopped typing in group ${data.groupId}`);
   });
 };

@@ -10,7 +10,6 @@ export type {
   Chat,
   AllChatsResponse,
   ChatListResponse,
-  
   // Message types
   CreateMessageData,
   MessageHistoryParams,
@@ -18,6 +17,7 @@ export type {
   
   // Socket types
   SocketUser,
+  SocketUserGroup,
   PrivateMessageData,
   GroupMessageData,
   

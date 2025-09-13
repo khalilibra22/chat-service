@@ -61,11 +61,11 @@ export const privateChatHandler = (io: Server, socket: Socket & { data: SocketUs
       isTyping: true,
       to: data.to
     };
-    console.log("typingData", typingData);
+    //console.log("typingData", typingData);
     
     // Emit to the recipient
     io.to(data.to).emit("receive-private-typing", typingData);
-    console.log(`User ${socket.data.userId} started typing to ${data.to}`);
+    //console.log(`User ${socket.data.userId} started typing to ${data.to}`);
   });
 
   socket.on("private-typing-stop", (data: PrivateTypingData) => {
@@ -78,6 +78,6 @@ export const privateChatHandler = (io: Server, socket: Socket & { data: SocketUs
     
     // Emit to the recipient
     io.to(data.to).emit("receive-private-typing", typingData);
-    console.log(`User ${socket.data.userId} stopped typing to ${data.to}`);
+    //console.log(`User ${socket.data.userId} stopped typing to ${data.to}`);
   });
 };

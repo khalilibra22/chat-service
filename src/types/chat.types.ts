@@ -65,6 +65,12 @@ export interface SocketUser {
   userId: string;
 }
 
+export interface SocketUserGroup {
+  //userId: string;
+  groupId: string;
+}
+
+
 export interface PrivateMessageData {
   to: string;
   content: string;
