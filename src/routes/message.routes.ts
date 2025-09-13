@@ -15,28 +15,24 @@ router.post(
   "/private/:otherUserId",
   AuthMiddleware.verifyToken,
   ValidationMiddleware.validate(privateApiMessageValidation),
-  async (req, res) => messageController.createPrivateMessage(req, res)
+  messageController.createPrivateMessage
 );
 
 router.get(
   "/private/:otherUserId",
   AuthMiddleware.verifyToken,
-  async (req, res) => messageController.getPrivateMessageHistory(req, res)
+  messageController.getPrivateMessageHistory
 );
 
 router.post(
   "/group/:groupId",
   AuthMiddleware.verifyToken,
   ValidationMiddleware.validate(groupApiMessageValidation),
-  async (req, res) => messageController.createGroupMessage(req, res)
+  messageController.createGroupMessage
 );
 
-router.get("/group/:groupId", AuthMiddleware.verifyToken, async (req, res) =>
-  messageController.getGroupMessageHistory(req, res)
-);
+router.get("/group/:groupId", AuthMiddleware.verifyToken, messageController.getGroupMessageHistory);
 
-router.get("/chats", AuthMiddleware.verifyToken, async (req, res) =>
-  messageController.getAllChats(req, res)
-);
+router.get("/chats", AuthMiddleware.verifyToken, messageController.getAllChats);
 
 export { router as messageRoutes };
