@@ -1,4 +1,4 @@
-import { Server, Socket } from "socket.io";
+import { Server, Socket, Namespace } from "socket.io";
 import { MessageService } from "../services/message.service";
 import { ValidationMiddleware } from "../utils/validation.middleware";
 import { privateSocketMessageValidation } from "../validations/message.validation";
@@ -8,7 +8,7 @@ import { PrivateMessageData, SocketUser, PrivateTypingData } from "../types/chat
 
 const messageService = new MessageService();
 
-export const privateChatHandler = (io: Server, socket: Socket & { data: SocketUser }) => {
+export const privateChatHandler = (io: Server | Namespace, socket: Socket & { data: SocketUser }) => {
   // Join personal room
   socket.on("join", () => {
     socket.join(socket.data.userId);

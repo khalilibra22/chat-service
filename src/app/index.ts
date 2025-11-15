@@ -28,7 +28,7 @@ const corsOptions = allowedOrigins.length
   : { origin: "*" } as any;
 
 const io = new Server(server, { cors: corsOptions });
-io.use(AuthMiddleware.verifySocketToken);
+// Authentication is now handled per-namespace in chatSocket
 chatSocket(io);
 
 app.use(cors(corsOptions));
