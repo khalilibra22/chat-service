@@ -1,93 +1,200 @@
 # Chat Service
 
+A real-time chat microservice built with Socket.IO, Express, and MongoDB. Supports private messaging, group chats, and typing indicators.
 
+## Features
 
-## Getting started
+- **Private Messaging**: One-on-one real-time chat between users
+- **Group Chat**: Multi-user group conversations
+- **Typing Indicators**: Real-time typing status for both private and group chats
+- **JWT Authentication**: Secure socket connections with JWT tokens
+- **Versioned API**: Socket.IO namespaces for API versioning
+- **RESTful Endpoints**: HTTP API for message and group management
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Getting Started
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Prerequisites
 
-## Add your files
+- Node.js (v14 or higher)
+- MongoDB
+- JWT_SECRET environment variable
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+### Installation
+
+```bash
+npm install
+```
+
+### Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+PORT=5002
+MONGO_URI=mongodb://localhost:27017/chat-service
+JWT_SECRET=your-secret-key
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+### Running the Service
+
+```bash
+# Development
+npm run dev
+
+# Production
+npm run build
+npm start
+```
+
+## Socket.IO Namespaces
+
+The service uses versioned Socket.IO namespaces to allow independent evolution of the API. Each namespace represents a different protocol version.
+
+### Available Namespaces
+
+- **`/ws/v1`**: Initial API version with private and group chat support
+
+### Client Connection
+
+To connect to a specific namespace version:
+
+```javascript
+import { io } from 'socket.io-client';
+
+// Connect to v1 namespace
+const socket = io('https://your-server.com/ws/v1', {
+  auth: {
+    token: 'your-jwt-token'
+  }
+});
+
+socket.on('connect', () => {
+  console.log('Connected to chat service');
+});
+```
+
+### Authentication
+
+All socket connections require JWT authentication. Pass your token in the `auth` object when connecting:
+
+```javascript
+const socket = io('https://your-server.com/ws/v1', {
+  auth: {
+    token: yourJwtToken
+  }
+});
+```
+
+### Events (v1)
+
+#### Private Chat
+
+**Client → Server:**
+- `join`: Join your personal room
+- `private-message`: Send a private message
+  ```javascript
+  socket.emit('private-message', {
+    to: 'recipientUserId',
+    content: 'Hello!'
+  });
+  ```
+- `private-typing-start`: Notify recipient you're typing
+- `private-typing-stop`: Notify recipient you stopped typing
+
+**Server → Client:**
+- `receive-private-message`: Receive a private message
+- `receive-private-typing`: Receive typing status updates
+
+#### Group Chat
+
+**Client → Server:**
+- `join-group`: Join a group room
+  ```javascript
+  socket.emit('join-group', {
+    groupId: 'groupId123'
+  });
+  ```
+- `group-message`: Send a message to a group
+  ```javascript
+  socket.emit('group-message', {
+    groupId: 'groupId123',
+    content: 'Hello everyone!'
+  });
+  ```
+- `group-typing-start`: Notify group you're typing
+- `group-typing-stop`: Notify group you stopped typing
+
+**Server → Client:**
+- `receive-group-message`: Receive a group message
+- `receive-group-typing`: Receive typing status updates from group members
+
+### Future Versions
+
+When new versions are introduced (e.g., `/ws/v2`), they will be documented here. Older versions will be maintained for backward compatibility with a deprecation timeline announced in advance.
+
+## REST API
+
+The service also provides RESTful endpoints for message and group management:
+
+- **Base URL**: `http://localhost:5002/v1`
+- **Authentication**: Bearer token in Authorization header
+
+### Endpoints
+
+- `GET /messages`: Retrieve messages
+- `POST /groups`: Create a new group
+- `GET /groups`: List groups
+- Additional endpoints available in the routes directory
+
+## Architecture
+
+### Directory Structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/e-learning-platform-project1/chat-service.git
-git branch -M main
-git push -uf origin main
+src/
+├── app/           # Application setup and configuration
+├── config/        # Database and service configuration
+├── controllers/   # HTTP request handlers
+├── dtos/          # Data transfer objects
+├── models/        # MongoDB models
+├── routes/        # REST API routes (versioned)
+├── services/      # Business logic layer
+├── sockets/       # Socket.IO handlers (versioned namespaces)
+├── types/         # TypeScript type definitions
+├── utils/         # Middleware and utilities
+└── validations/   # Input validation schemas
 ```
 
-## Integrate with your tools
+### Versioning Strategy
 
-- [ ] [Set up project integrations](https://gitlab.com/e-learning-platform-project1/chat-service/-/settings/integrations)
+The service uses namespace-based versioning for Socket.IO connections:
 
-## Collaborate with your team
+- Each version has its own namespace (e.g., `/ws/v1`, `/ws/v2`)
+- Clients connect to the namespace matching their supported version
+- Authentication middleware is applied per-namespace
+- Handlers can be shared or version-specific as needed
+- Old versions can be deprecated gradually with advance notice
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+To add a new version, update `src/sockets/namespaces.ts` with the new version configuration.
 
-## Test and Deploy
+## Development
 
-Use the built-in continuous integration in GitLab.
+### Project Structure
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+- **TypeScript**: The project is written in TypeScript and compiled to JavaScript
+- **MongoDB**: Uses Mongoose for database operations
+- **Socket.IO**: Real-time bidirectional communication
+- **Express**: RESTful API endpoints
 
-***
+### Building
 
-# Editing this README
+```bash
+npm run build
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Compiled output will be in the `dist/` directory.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This project is part of the E-Learning Platform Project.

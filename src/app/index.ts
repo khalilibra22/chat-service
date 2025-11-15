@@ -4,9 +4,8 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "../config/database";
-import { groupRoutes } from "../routes/group.routes";
+import { v1Router } from "../routes";
 import { chatSocket } from "../sockets";
-import { messageRoutes } from "../routes/message.routes";
 import { AuthMiddleware } from "../utils/auth.middleware";
 
 dotenv.config();
@@ -29,7 +28,7 @@ const corsOptions = allowedOrigins.length
   : { origin: "*" } as any;
 
 const io = new Server(server, { cors: corsOptions });
-io.use(AuthMiddleware.verifySocketToken);
+// Authentication is now handled per-namespace in chatSocket
 chatSocket(io);
 
 app.use(cors(corsOptions));
@@ -43,8 +42,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction): void => {
   next(err);
 });
 
-app.use("/groups", groupRoutes);
-app.use("/messages", messageRoutes);
+app.use("/v1", v1Router);
 app.get("/", (req, res) => {
   res.send("Running !!");
 });

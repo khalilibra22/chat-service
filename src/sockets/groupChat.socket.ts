@@ -1,4 +1,4 @@
-import { Server, Socket } from "socket.io";
+import { Server, Socket, Namespace } from "socket.io";
 import { MessageService } from "../services/message.service";
 import { ValidationMiddleware } from "../utils/validation.middleware";
 import { groupSocketMessageValidation } from "../validations/message.validation";
@@ -10,7 +10,7 @@ import { GroupMessageData, SocketUser, GroupTypingData, SocketUserGroup } from "
 const messageService = new MessageService();
 const groupService = new GroupService();
 
-export const groupChatHandler = (io: Server, socket: Socket & { data: SocketUser & { groupId?: string } }) => {
+export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data: SocketUser & { groupId?: string } }) => {
   // Join group room
   socket.on("join-group", async (data: { groupId: string }) => {
     const groupId = data?.groupId;
