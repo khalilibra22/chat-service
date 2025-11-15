@@ -11,8 +11,16 @@ export class GroupController {
 
   createChatGroup = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { name, members } = req.body;
-      const group = await this.groupService.createGroup({ name, members });
+      const { name, members = [] } = req.body;
+      const creatorId = (req as any).user.id;
+      
+      // Ensure creator is in members array if not already present
+      const membersList = Array.isArray(members) ? members : [];
+      if (!membersList.includes(creatorId)) {
+        membersList.push(creatorId);
+      }
+      
+      const group = await this.groupService.createGroup({ name, members: membersList });
       
       // Transform the response using GroupDto
       const groupDto = plainToClass(GroupDto, group, { excludeExtraneousValues: true });

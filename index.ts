@@ -1,2 +1,2 @@
 import "reflect-metadata";
-import "./src/services/app";
+import "./src/app/index";

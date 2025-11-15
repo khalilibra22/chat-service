@@ -69,11 +69,21 @@ export class MessageController {
   getGroupMessageHistory = async (req: Request, res: Response): Promise<void> => {
     try {
       const { groupId } = req.params;
+      const userId = (req as any).user.id;
       const page = Math.max(parseInt((req.query.page as string) || "1", 10), 1);
       const limit = Math.min(
         Math.max(parseInt((req.query.limit as string) || "20", 10), 1),
         100
       );
+
+      const isGroupMember = await this.groupService.isUserInGroup(
+        userId,
+        groupId
+      );
+      if (!isGroupMember) {
+        res.status(403).json({ error: "User is not a member of the group" });
+        return;
+      }
 
       const { items, total } = await this.messageService.getGroupMessageHistoryPaginated(
         groupId,

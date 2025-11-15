@@ -1,4 +1,5 @@
 import Message from "../models/message.model";
+import Group from "../models/group.model";
 import { 
   CreateMessageData, 
   AllChatsResponse, 
@@ -138,7 +139,20 @@ export class MessageService {
         },
       ]);
 
-      return { privateChats, groupChats };
+      // Fetch group metadata for all group chats
+      const groupIds = groupChats.map(chat => chat._id);
+      const groups = await Group.find({ _id: { $in: groupIds } }).select('_id name');
+      
+      // Create a map of group ID to group name
+      const groupMap = new Map(groups.map(g => [g._id.toString(), g.name]));
+      
+      // Attach group name to each group chat
+      const enrichedGroupChats = groupChats.map(chat => ({
+        ...chat,
+        groupName: groupMap.get(chat._id.toString())
+      }));
+
+      return { privateChats, groupChats: enrichedGroupChats };
     } catch (error) {
       console.error(error);
       throw new Error("Error fetching chats");

@@ -4,9 +4,8 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "../config/database";
-import { groupRoutes } from "../routes/group.routes";
+import { v1Router } from "../routes";
 import { chatSocket } from "../sockets";
-import { messageRoutes } from "../routes/message.routes";
 import { AuthMiddleware } from "../utils/auth.middleware";
 
 dotenv.config();
@@ -43,8 +42,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction): void => {
   next(err);
 });
 
-app.use("/groups", groupRoutes);
-app.use("/messages", messageRoutes);
+app.use("/v1", v1Router);
 app.get("/", (req, res) => {
   res.send("Running !!");
 });

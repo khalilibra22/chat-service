@@ -7,6 +7,9 @@ export class ChatDto {
   _id?: string;
 
   @Expose()
+  groupName?: string;
+
+  @Expose()
   @Type(() => MessageDto)
   lastMessage?: MessageDto;
 }

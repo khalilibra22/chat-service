@@ -1,0 +1,21 @@
+import express from "express";
+import { GroupController } from "../../controllers/group.controller";
+import { AuthMiddleware } from "../../utils/auth.middleware";
+import { ValidationMiddleware } from "../../utils/validation.middleware";
+import { createGroupValidation } from "../../validations/group.validation";
+
+const router = express.Router();
+
+const groupController = new GroupController();
+
+router.post(
+  "/",
+  AuthMiddleware.verifyToken,
+  ValidationMiddleware.validate(createGroupValidation),
+  groupController.createChatGroup
+);
+
+router.get("/", AuthMiddleware.verifyToken, groupController.getUserGroups);
+
+export { router as groupRoutes };
+

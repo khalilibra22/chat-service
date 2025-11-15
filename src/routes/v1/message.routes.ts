@@ -1,11 +1,11 @@
 import express from "express";
-import { MessageController } from "../controllers/message.controller";
-import { AuthMiddleware } from "../utils/auth.middleware";
-import { ValidationMiddleware } from "../utils/validation.middleware";
+import { MessageController } from "../../controllers/message.controller";
+import { AuthMiddleware } from "../../utils/auth.middleware";
+import { ValidationMiddleware } from "../../utils/validation.middleware";
 import {
   groupApiMessageValidation,
   privateApiMessageValidation,
-} from "../validations/message.validation";
+} from "../../validations/message.validation";
 
 const router = express.Router();
 
@@ -36,3 +36,4 @@ router.get("/group/:groupId", AuthMiddleware.verifyToken, messageController.getG
 router.get("/chats", AuthMiddleware.verifyToken, messageController.getAllChats);
 
 export { router as messageRoutes };
+

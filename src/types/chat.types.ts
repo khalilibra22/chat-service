@@ -14,6 +14,7 @@ export interface PrivateChat extends BaseChat {
 // Group chat interface  
 export interface GroupChat extends BaseChat {
   chatType?: "group";
+  groupName?: string;
 }
 
 // Union type for all chat types
