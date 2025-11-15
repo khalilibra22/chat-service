@@ -11,7 +11,7 @@ export class GroupController {
 
   createChatGroup = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { name, members = [] } = req.body;
+      const { name, members = [], groupType } = req.body;
       const creatorId = (req as any).user.id;
       
       // Ensure creator is in members array if not already present
@@ -20,7 +20,12 @@ export class GroupController {
         membersList.push(creatorId);
       }
       
-      const group = await this.groupService.createGroup({ name, members: membersList });
+      const groupData: any = { name, members: membersList };
+      if (groupType) {
+        groupData.groupType = groupType;
+      }
+      
+      const group = await this.groupService.createGroup(groupData);
       
       // Transform the response using GroupDto
       const groupDto = plainToClass(GroupDto, group, { excludeExtraneousValues: true });

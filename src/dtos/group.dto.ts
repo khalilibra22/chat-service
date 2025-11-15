@@ -9,6 +9,9 @@ export class GroupDto {
 
   @Expose()
   members?: string[];
+
+  @Expose()
+  groupType?: string;
 }
 
 

@@ -1,4 +1,26 @@
-import { Expose } from "class-transformer";
+import { Expose, Type } from "class-transformer";
+
+export class MessageViewDto {
+  @Expose()
+  userId?: string;
+
+  @Expose()
+  viewedAt?: Date;
+}
+
+export class UserProfileDto {
+  @Expose()
+  userId?: string;
+
+  @Expose()
+  name?: string;
+
+  @Expose()
+  profileImageUrl?: string;
+
+  @Expose()
+  email?: string;
+}
 
 export class MessageDto {
   @Expose()
@@ -18,4 +40,16 @@ export class MessageDto {
 
   @Expose()
   groupId?: string;
+
+  @Expose()
+  @Type(() => MessageViewDto)
+  views?: MessageViewDto[];
+
+  @Expose()
+  @Type(() => UserProfileDto)
+  senderProfile?: UserProfileDto;
+
+  @Expose()
+  @Type(() => UserProfileDto)
+  receiverProfile?: UserProfileDto;
 }

@@ -156,4 +156,53 @@ export class MessageController {
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
+
+  markMessageAsViewed = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { messageId } = req.params;
+      const userId = (req as any).user.id;
+
+      const updatedMessage = await this.messageService.markMessageViewed(
+        messageId,
+        userId
+      );
+
+      const messageDto = plainToInstance(MessageDto, updatedMessage, {
+        excludeExtraneousValues: true,
+      });
+
+      res.status(200).json(messageDto);
+    } catch (error) {
+      console.error("Error marking message as viewed:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+
+  getMessageViews = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { messageId } = req.params;
+      const views = await this.messageService.getMessageViews(messageId);
+      res.status(200).json({ views });
+    } catch (error) {
+      console.error("Error fetching message views:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+
+  checkMessageViewed = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { messageId } = req.params;
+      const userId = (req as any).user.id;
+      
+      const hasViewed = await this.messageService.hasUserViewedMessage(
+        messageId,
+        userId
+      );
+
+      res.status(200).json({ viewed: hasViewed });
+    } catch (error) {
+      console.error("Error checking message view status:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
 }

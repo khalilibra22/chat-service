@@ -11,10 +11,14 @@ export interface PrivateChat extends BaseChat {
   chatType?: "private";
 }
 
+// Group type enum
+export type GroupType = "one-on-one" | "pre-booking" | "group-lesson" | "live-course";
+
 // Group chat interface  
 export interface GroupChat extends BaseChat {
   chatType?: "group";
   groupName?: string;
+  groupType?: GroupType;
 }
 
 // Union type for all chat types
@@ -39,6 +43,21 @@ export interface PaginatedResponse<T> {
   limit: number;
 }
 
+// Message view types
+export interface MessageView {
+  userId: string;
+  viewedAt: Date;
+}
+
+// User profile types
+export interface UserProfile {
+  userId: string;
+  name: string;
+  profileImageUrl?: string;
+  email?: string;
+  metadata?: Record<string, any>;
+}
+
 // Message service types
 export interface CreateMessageData {
   senderId: string;
@@ -46,6 +65,7 @@ export interface CreateMessageData {
   groupId?: string;
   content: string;
   chatType?: "private" | "group";
+  views?: MessageView[];
 }
 
 export interface MessageHistoryParams {

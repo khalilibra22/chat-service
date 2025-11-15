@@ -9,6 +9,9 @@ export const createGroupValidation = Joi.object({
   }),
   members: Joi.array().items(Joi.string()).optional().messages({
     "array.base": "Members must be an array of user IDs"
+  }),
+  groupType: Joi.string().valid("one-on-one", "pre-booking", "group-lesson", "live-course").optional().messages({
+    "any.only": "Group type must be one of: one-on-one, pre-booking, group-lesson, live-course"
   })
 });
 

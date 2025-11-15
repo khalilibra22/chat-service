@@ -80,4 +80,39 @@ export const privateChatHandler = (io: Server | Namespace, socket: Socket & { da
     io.to(data.to).emit("receive-private-typing", typingData);
     //console.log(`User ${socket.data.userId} stopped typing to ${data.to}`);
   });
+
+  // Handle message view updates
+  socket.on("message-viewed", async (data: { messageId: string }, callback?: (response: any) => void) => {
+    try {
+      const { messageId } = data;
+      const userId = socket.data.userId;
+
+      const updatedMessage = await messageService.markMessageViewed(messageId, userId);
+
+      const messageDto = plainToInstance(MessageDto, updatedMessage, {
+        excludeExtraneousValues: true,
+      });
+
+      // Broadcast view update to sender and receiver
+      if (updatedMessage.senderId) {
+        io.to(updatedMessage.senderId).emit("message-view-updated", {
+          messageId,
+          userId,
+          viewedAt: new Date(),
+        });
+      }
+      if (updatedMessage.receiverId) {
+        io.to(updatedMessage.receiverId).emit("message-view-updated", {
+          messageId,
+          userId,
+          viewedAt: new Date(),
+        });
+      }
+
+      if (callback) callback({ success: true, message: messageDto });
+    } catch (error) {
+      console.error("Message view error:", error);
+      if (callback) callback({ error: "Failed to mark message as viewed" });
+    }
+  });
 };

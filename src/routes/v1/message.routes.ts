@@ -35,5 +35,10 @@ router.get("/group/:groupId", AuthMiddleware.verifyToken, messageController.getG
 
 router.get("/chats", AuthMiddleware.verifyToken, messageController.getAllChats);
 
+// View management routes
+router.patch("/:messageId/view", AuthMiddleware.verifyToken, messageController.markMessageAsViewed);
+router.get("/:messageId/views", AuthMiddleware.verifyToken, messageController.getMessageViews);
+router.get("/:messageId/viewed", AuthMiddleware.verifyToken, messageController.checkMessageViewed);
+
 export { router as messageRoutes };
 

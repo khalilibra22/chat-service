@@ -5,17 +5,33 @@ import {
   AllChatsResponse, 
   PaginatedResponse, 
   MessageHistoryParams, 
-  GroupMessageHistoryParams 
+  GroupMessageHistoryParams,
+  UserProfile 
 } from "../types/chat.types";
+import { UserService } from "./user.service";
 
 export class MessageService {
+  private userService: UserService;
+
+  constructor() {
+    this.userService = new UserService();
+  }
   async createPrivateMessage(messageData: CreateMessageData): Promise<any> {
     try {
+      // Ensure user profiles are cached
+      const userIds = [messageData.senderId];
+      if (messageData.receiverId) {
+        userIds.push(messageData.receiverId);
+      }
+      await this.userService.ensureUserProfiles(userIds);
+
       const message = await Message.create({
         ...messageData,
         chatType: "private",
       });
-      return message;
+
+      // Enrich message with user profiles
+      return await this.enrichMessageWithProfiles(message);
     } catch (error) {
       console.error(error);
       throw new Error("Error creating private message");
@@ -24,11 +40,16 @@ export class MessageService {
 
   async createGroupMessage(messageData: CreateMessageData): Promise<any> {
     try {
+      // Ensure sender profile is cached
+      await this.userService.ensureUserProfile(messageData.senderId);
+
       const message = await Message.create({
         ...messageData,
         chatType: "group",
       });
-      return message;
+
+      // Enrich message with user profiles
+      return await this.enrichMessageWithProfiles(message);
     } catch (error) {
       console.error(error);
       throw new Error("Error creating group message");
@@ -156,6 +177,132 @@ export class MessageService {
     } catch (error) {
       console.error(error);
       throw new Error("Error fetching chats");
+    }
+  }
+
+  /**
+   * Enrich a message with user profile information
+   */
+  private async enrichMessageWithProfiles(message: any): Promise<any> {
+    const messageObj = message.toObject ? message.toObject() : message;
+    
+    // Fetch sender profile
+    if (messageObj.senderId) {
+      const senderProfile = await this.userService.getUserProfile(messageObj.senderId);
+      if (senderProfile) {
+        messageObj.senderProfile = senderProfile;
+      }
+    }
+
+    // Fetch receiver profile for private messages
+    if (messageObj.receiverId) {
+      const receiverProfile = await this.userService.getUserProfile(messageObj.receiverId);
+      if (receiverProfile) {
+        messageObj.receiverProfile = receiverProfile;
+      }
+    }
+
+    return messageObj;
+  }
+
+  /**
+   * Enrich multiple messages with user profiles
+   */
+  private async enrichMessagesWithProfiles(messages: any[]): Promise<any[]> {
+    // Collect all unique user IDs
+    const userIds = new Set<string>();
+    messages.forEach(msg => {
+      if (msg.senderId) userIds.add(msg.senderId);
+      if (msg.receiverId) userIds.add(msg.receiverId);
+    });
+
+    // Batch fetch all profiles
+    const profiles = await this.userService.ensureUserProfiles(Array.from(userIds));
+
+    // Enrich each message
+    return messages.map(msg => {
+      const messageObj = msg.toObject ? msg.toObject() : msg;
+      
+      if (messageObj.senderId) {
+        const senderProfile = profiles.get(messageObj.senderId);
+        if (senderProfile) {
+          messageObj.senderProfile = senderProfile;
+        }
+      }
+
+      if (messageObj.receiverId) {
+        const receiverProfile = profiles.get(messageObj.receiverId);
+        if (receiverProfile) {
+          messageObj.receiverProfile = receiverProfile;
+        }
+      }
+
+      return messageObj;
+    });
+  }
+
+  /**
+   * Mark a message as viewed by a user
+   */
+  async markMessageViewed(messageId: string, userId: string): Promise<any> {
+    try {
+      // Check if user has already viewed this message
+      const message = await Message.findById(messageId);
+      
+      if (!message) {
+        throw new Error("Message not found");
+      }
+
+      const alreadyViewed = message.views?.some((view: any) => view.userId === userId);
+      
+      if (alreadyViewed) {
+        return message; // Already viewed, no need to update
+      }
+
+      // Add view record
+      const updatedMessage = await Message.findByIdAndUpdate(
+        messageId,
+        {
+          $push: {
+            views: {
+              userId,
+              viewedAt: new Date(),
+            },
+          },
+        },
+        { new: true }
+      );
+
+      return updatedMessage;
+    } catch (error) {
+      console.error(error);
+      throw new Error("Error marking message as viewed");
+    }
+  }
+
+  /**
+   * Get view status for a message
+   */
+  async getMessageViews(messageId: string): Promise<any[]> {
+    try {
+      const message = await Message.findById(messageId).select("views");
+      return message?.views || [];
+    } catch (error) {
+      console.error(error);
+      throw new Error("Error fetching message views");
+    }
+  }
+
+  /**
+   * Check if a user has viewed a message
+   */
+  async hasUserViewedMessage(messageId: string, userId: string): Promise<boolean> {
+    try {
+      const message = await Message.findById(messageId).select("views");
+      return message?.views?.some((view: any) => view.userId === userId) || false;
+    } catch (error) {
+      console.error(error);
+      return false;
     }
   }
 }
