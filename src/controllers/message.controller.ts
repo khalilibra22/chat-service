@@ -134,7 +134,7 @@ export class MessageController {
   getAllChats = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId: string = (req as any).user.id; 
-      const chats: AllChatsResponse = await this.messageService.getAllChats(userId);
+      const chats = await this.messageService.getAllChats(userId);
       
       const privateChatDtos = chats.privateChats.map((chat: any) => 
         plainToInstance(ChatDto, chat, { excludeExtraneousValues: true })
@@ -147,7 +147,8 @@ export class MessageController {
       const chatDtos: ChatListResponse = {
         privateChats: privateChatDtos as any,
         groupChats: groupChatDtos as any,
-        totalChats: privateChatDtos.length + groupChatDtos.length
+        totalChats: privateChatDtos.length + groupChatDtos.length,
+        totalUnread: chats.totalUnread || 0
       };
       
       res.status(200).json(chatDtos);

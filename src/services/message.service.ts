@@ -120,8 +120,9 @@ export class MessageService {
     }
   }
 
-  async getAllChats(userId: string): Promise<AllChatsResponse> {
+  async getAllChats(userId: string): Promise<AllChatsResponse & { totalUnread: number }> {
     try {
+      // Get private chats
       const privateChats = await Message.aggregate([
         {
           $match: {
@@ -144,11 +145,16 @@ export class MessageService {
         },
       ]);
 
+      // Get all groups user is a member of
+      const userGroups = await Group.find({ members: userId }).select('_id name groupType');
+      const groupIds = userGroups.map(g => g._id);
+      
+      // Get group chats - last message for each group
       const groupChats = await Message.aggregate([
         {
           $match: {
             chatType: "group",
-            senderId: userId,
+            groupId: { $in: groupIds },
           },
         },
         { $sort: { timestamp: -1 } },
@@ -160,23 +166,142 @@ export class MessageService {
         },
       ]);
 
-      // Fetch group metadata for all group chats
-      const groupIds = groupChats.map(chat => chat._id);
-      const groups = await Group.find({ _id: { $in: groupIds } }).select('_id name');
+      // Create maps for group metadata
+      const groupMap = new Map(userGroups.map(g => [g._id.toString(), { name: g.name, groupType: g.groupType }]));
       
-      // Create a map of group ID to group name
-      const groupMap = new Map(groups.map(g => [g._id.toString(), g.name]));
-      
-      // Attach group name to each group chat
-      const enrichedGroupChats = groupChats.map(chat => ({
-        ...chat,
-        groupName: groupMap.get(chat._id.toString())
-      }));
+      // Calculate unread counts for private chats
+      const enrichedPrivateChats = await Promise.all(
+        privateChats.map(async (chat) => {
+          const otherUserId = chat._id;
+          
+          // Count unread messages: messages where receiverId = userId and user not in views
+          const unreadCount = await Message.countDocuments({
+            chatType: "private",
+            receiverId: userId,
+            senderId: otherUserId,
+            $nor: [
+              { "views.userId": userId }
+            ],
+          });
 
-      return { privateChats, groupChats: enrichedGroupChats };
+          // Get other user's profile
+          const otherUserProfile = await this.userService.getUserProfile(otherUserId);
+
+          // Format timestamp and create preview
+          const lastMsg = chat.lastMessage;
+          const formattedTimestamp = this.formatTimestamp(lastMsg?.timestamp);
+          const lastMessagePreview = lastMsg?.content 
+            ? (lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + "..." : lastMsg.content)
+            : "";
+
+          return {
+            ...chat,
+            chatType: "private",
+            unreadCount,
+            otherUserProfile,
+            formattedTimestamp,
+            lastMessagePreview,
+            displayName: otherUserProfile?.name,
+            displayImage: otherUserProfile?.profileImageUrl,
+          };
+        })
+      );
+
+      // Calculate unread counts for group chats
+      const enrichedGroupChats = await Promise.all(
+        groupChats.map(async (chat) => {
+          const groupId = chat._id;
+          const groupInfo = groupMap.get(groupId.toString());
+          
+          // Count unread messages: messages in this group where user not in views
+          const unreadCount = await Message.countDocuments({
+            chatType: "group",
+            groupId: groupId,
+            $nor: [
+              { "views.userId": userId }
+            ],
+          });
+
+          // Format timestamp and create preview with sender name
+          const lastMsg = chat.lastMessage;
+          const formattedTimestamp = this.formatTimestamp(lastMsg?.timestamp);
+          
+          let lastMessagePreview = "";
+          if (lastMsg?.content) {
+            const senderProfile = lastMsg.senderId 
+              ? await this.userService.getUserProfile(lastMsg.senderId)
+              : null;
+            const senderName = senderProfile?.name || "Someone";
+            const content = lastMsg.content.length > 40 
+              ? lastMsg.content.substring(0, 40) + "..." 
+              : lastMsg.content;
+            lastMessagePreview = `${senderName}: ${content}`;
+          }
+
+          return {
+            ...chat,
+            chatType: "group",
+            groupName: groupInfo?.name,
+            groupType: groupInfo?.groupType,
+            unreadCount,
+            formattedTimestamp,
+            lastMessagePreview,
+            displayName: groupInfo?.name,
+            // Groups might have icons/images in the future, for now use null
+            displayImage: null,
+          };
+        })
+      );
+
+      // Calculate total unread
+      const totalUnread = enrichedPrivateChats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0) +
+                          enrichedGroupChats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+
+      return { 
+        privateChats: enrichedPrivateChats, 
+        groupChats: enrichedGroupChats,
+        totalUnread 
+      };
     } catch (error) {
       console.error(error);
       throw new Error("Error fetching chats");
+    }
+  }
+
+  /**
+   * Format timestamp for display
+   * Today: "HH:mm" format (e.g., "13:30")
+   * Yesterday: "Yesterday"
+   * This week: Day name (e.g., "Tuesday")
+   * Older: Date format (e.g., "Jan 15")
+   */
+  private formatTimestamp(timestamp?: Date): string {
+    if (!timestamp) return "";
+    
+    const now = new Date();
+    const msgDate = new Date(timestamp);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+    
+    const diffTime = today.getTime() - msgDay.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      // Today - return time in HH:mm format
+      const hours = msgDate.getHours().toString().padStart(2, '0');
+      const minutes = msgDate.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } else if (diffDays === 1) {
+      // Yesterday
+      return "Yesterday";
+    } else if (diffDays < 7) {
+      // This week - return day name
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      return days[msgDate.getDay()];
+    } else {
+      // Older - return date format "Jan 15"
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[msgDate.getMonth()]} ${msgDate.getDate()}`;
     }
   }
 

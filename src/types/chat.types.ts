@@ -128,4 +128,5 @@ export interface ChatListResponse {
   privateChats: PrivateChat[];
   groupChats: GroupChat[];
   totalChats: number;
+  totalUnread: number;
 }

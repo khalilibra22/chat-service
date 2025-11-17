@@ -6,7 +6,7 @@ export class UserService {
   private cacheExpiryHours: number;
 
   constructor() {
-    this.userServiceUrl = process.env.USER_SERVICE_URL || "http://localhost:3001";
+    this.userServiceUrl = process.env.USER_SERVICE_URL || "https://user-service-dev-ys17.onrender.com/v1";
     this.cacheExpiryHours = parseInt(process.env.USER_CACHE_EXPIRY_HOURS || "24", 10);
   }
 
@@ -15,7 +15,7 @@ export class UserService {
    */
   private async fetchUserFromService(userId: string): Promise<UserProfile | null> {
     try {
-      const response = await fetch(`${this.userServiceUrl}/api/users/${userId}`, {
+      const response = await fetch(`${this.userServiceUrl}/users/${userId}/minimal`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -61,7 +61,7 @@ export class UserService {
    */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     try {
-      // Check cache first
+      // Check cache first - use findByUserId instead of findById
       const cachedUser = await User.findByUserId(userId);
       
       if (cachedUser && this.isCacheValid(cachedUser)) {
@@ -81,7 +81,7 @@ export class UserService {
         return null;
       }
 
-      // Update cache
+      // Update cache using upsertProfile to handle existing users
       await User.upsertProfile(userProfile);
       
       return userProfile;
