@@ -7,6 +7,10 @@ export const createGroupValidation = Joi.object({
     "string.max": "Group name must not exceed 100 characters",
     "any.required": "Group name is required"
   }),
+  userId: Joi.string().required().messages({
+    "string.empty": "User ID is required",
+    "any.required": "User ID is required"
+  }),
   members: Joi.array().items(Joi.string()).optional().messages({
     "array.base": "Members must be an array of user IDs"
   }),

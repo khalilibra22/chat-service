@@ -11,6 +11,68 @@ export class UserService {
   }
 
   /**
+   * Create a new user record locally
+   */
+  async createUser(payload: {
+    userId: string;
+    fullname: string;
+    email: string;
+    profileImage?: string;
+  }): Promise<IUser> {
+    try {
+      const existingUser = await User.findOne({ userId: payload.userId });
+      if (existingUser) {
+        throw new Error("User already exists");
+      }
+
+      const user = await User.create({
+        userId: payload.userId,
+        name: payload.fullname,
+        email: payload.email,
+        profileImageUrl: payload.profileImage,
+      });
+
+      return user;
+    } catch (error) {
+      console.error(`Error creating user ${payload.userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user profile from local cache only
+   */
+  async getCachedUserProfile(userId: string): Promise<UserProfile | null> {
+    const user = await User.findByUserId(userId);
+    if (!user) {
+      return null;
+    }
+
+    return {
+      userId: user.userId,
+      name: user.name,
+      profileImageUrl: user.profileImageUrl,
+      email: user.email,
+      metadata: user.metadata,
+    };
+  }
+
+  async getCachedUserProfiles(userIds: string[]): Promise<Map<string, UserProfile>> {
+    const profiles = new Map<string, UserProfile>();
+    const users = await User.find({ userId: { $in: userIds } });
+    users.forEach((user) => {
+      profiles.set(user.userId, {
+        userId: user.userId,
+        name: user.name,
+        profileImageUrl: user.profileImageUrl,
+        email: user.email,
+        metadata: user.metadata,
+      });
+    });
+    return profiles;
+  }
+
+  /**
    * Fetch user profile from external user service
    */
   private async fetchUserFromService(userId: string): Promise<UserProfile | null> {

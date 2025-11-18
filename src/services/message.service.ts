@@ -18,41 +18,37 @@ export class MessageService {
   }
   async createPrivateMessage(messageData: CreateMessageData): Promise<any> {
     try {
-      // Ensure user profiles are cached
-      const userIds = [messageData.senderId];
-      if (messageData.receiverId) {
-        userIds.push(messageData.receiverId);
-      }
-      await this.userService.ensureUserProfiles(userIds);
-
       const message = await Message.create({
         ...messageData,
         chatType: "private",
       });
 
-      // Enrich message with user profiles
       return await this.enrichMessageWithProfiles(message);
     } catch (error) {
-      console.error(error);
-      throw new Error("Error creating private message");
+      console.error("Error creating private message:", error);
+      throw error;
     }
   }
 
   async createGroupMessage(messageData: CreateMessageData): Promise<any> {
     try {
-      // Ensure sender profile is cached
-      await this.userService.ensureUserProfile(messageData.senderId);
+      const senderProfile = await this.userService.getCachedUserProfile(
+        messageData.senderId
+      );
+
+      if (!senderProfile) {
+        throw new Error("Sender not found");
+      }
 
       const message = await Message.create({
         ...messageData,
         chatType: "group",
       });
 
-      // Enrich message with user profiles
       return await this.enrichMessageWithProfiles(message);
     } catch (error) {
-      console.error(error);
-      throw new Error("Error creating group message");
+      console.error("Error creating group message:", error);
+      throw error;
     }
   }
 
@@ -313,7 +309,7 @@ export class MessageService {
     
     // Fetch sender profile
     if (messageObj.senderId) {
-      const senderProfile = await this.userService.getUserProfile(messageObj.senderId);
+      const senderProfile = await this.userService.getCachedUserProfile(messageObj.senderId);
       if (senderProfile) {
         messageObj.senderProfile = senderProfile;
       }
@@ -321,7 +317,7 @@ export class MessageService {
 
     // Fetch receiver profile for private messages
     if (messageObj.receiverId) {
-      const receiverProfile = await this.userService.getUserProfile(messageObj.receiverId);
+      const receiverProfile = await this.userService.getCachedUserProfile(messageObj.receiverId);
       if (receiverProfile) {
         messageObj.receiverProfile = receiverProfile;
       }
@@ -342,7 +338,7 @@ export class MessageService {
     });
 
     // Batch fetch all profiles
-    const profiles = await this.userService.ensureUserProfiles(Array.from(userIds));
+    const profiles = await this.userService.getCachedUserProfiles(Array.from(userIds));
 
     // Enrich each message
     return messages.map(msg => {

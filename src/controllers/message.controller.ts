@@ -30,9 +30,15 @@ export class MessageController {
         excludeExtraneousValues: true,
       });
       res.status(201).json(messageDto);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating private message:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+      const message = error?.message || "Internal Server Error";
+      const statusMap: Record<string, number> = {
+        "Sender not found": 404,
+        "Receiver not found": 404,
+      };
+      const status = statusMap[message] || 500;
+      res.status(status).json({ error: message });
     }
   };
 
@@ -60,9 +66,14 @@ export class MessageController {
       res.setHeader("X-Page", page.toString());
       res.setHeader("X-Limit", limit.toString());
       res.status(200).json(messageDtos);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: "Internal Server Error" });
+      const message = error?.message || "Internal Server Error";
+      const statusMap: Record<string, number> = {
+        "Sender not found": 404,
+      };
+      const status = statusMap[message] || 500;
+      res.status(status).json({ error: message });
     }
   };
 
@@ -98,9 +109,14 @@ export class MessageController {
       res.setHeader("X-Page", page.toString());
       res.setHeader("X-Limit", limit.toString());
       res.status(200).json(messageDtos);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: "Internal Server Error" });
+      const message = error?.message || "Internal Server Error";
+      const statusMap: Record<string, number> = {
+        "Sender not found": 404,
+      };
+      const status = statusMap[message] || 500;
+      res.status(status).json({ error: message });
     }
   };
 
