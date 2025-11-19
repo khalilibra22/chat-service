@@ -116,7 +116,7 @@ export class MessageService {
     }
   }
 
-  async getAllChats(userId: string): Promise<AllChatsResponse & { totalUnread: number }> {
+  async getAllChats(userId: string, page: number = 1, limit: number = 20): Promise<AllChatsResponse & { totalUnread: number; total: number; page: number; limit: number }> {
     try {
       // Get private chats
       const privateChats = await Message.aggregate([
@@ -249,14 +249,47 @@ export class MessageService {
         })
       );
 
-      // Calculate total unread
+      // Calculate total unread (before pagination)
       const totalUnread = enrichedPrivateChats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0) +
                           enrichedGroupChats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
 
+      // Combine all chats and sort by last message timestamp
+      const allChats = [
+        ...enrichedPrivateChats.map(chat => ({
+          ...chat,
+          sortTimestamp: chat.lastMessage?.timestamp || new Date(0)
+        })),
+        ...enrichedGroupChats.map(chat => ({
+          ...chat,
+          sortTimestamp: chat.lastMessage?.timestamp || new Date(0)
+        }))
+      ].sort((a, b) => {
+        const timeA = new Date(a.sortTimestamp).getTime();
+        const timeB = new Date(b.sortTimestamp).getTime();
+        return timeB - timeA; // Most recent first
+      });
+
+      // Calculate pagination
+      const total = allChats.length;
+      const skip = (page - 1) * limit;
+      const paginatedChats = allChats.slice(skip, skip + limit);
+
+      // Separate back into private and group chats
+      const paginatedPrivateChats = paginatedChats
+        .filter(chat => chat.chatType === "private")
+        .map(({ sortTimestamp, ...chat }) => chat);
+      
+      const paginatedGroupChats = paginatedChats
+        .filter(chat => chat.chatType === "group")
+        .map(({ sortTimestamp, ...chat }) => chat);
+
       return { 
-        privateChats: enrichedPrivateChats, 
-        groupChats: enrichedGroupChats,
-        totalUnread 
+        privateChats: paginatedPrivateChats, 
+        groupChats: paginatedGroupChats,
+        totalUnread,
+        total,
+        page,
+        limit
       };
     } catch (error) {
       console.error(error);
@@ -369,7 +402,6 @@ export class MessageService {
     try {
       // Check if user has already viewed this message
       const message = await Message.findById(messageId);
-      
       if (!message) {
         throw new Error("Message not found");
       }

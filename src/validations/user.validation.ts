@@ -20,3 +20,17 @@ export const createUserValidation = Joi.object({
     "string.uri": "Profile image must be a valid URL",
   }),
 });
+
+export const updateUserValidation = Joi.object({
+  fullname: Joi.string().trim().min(1).max(150).optional().messages({
+    "string.empty": "Full name cannot be empty",
+    "string.min": "Full name must be at least 1 character",
+    "string.max": "Full name must not exceed 150 characters",
+  }),
+  email: Joi.string().trim().email().optional().messages({
+    "string.email": "Email must be a valid email address",
+  }),
+  profileImage: Joi.string().trim().optional().messages({
+    "string.uri": "Profile image must be a valid URL",
+  }),
+});

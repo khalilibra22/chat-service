@@ -149,8 +149,14 @@ export class MessageController {
 
   getAllChats = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId: string = (req as any).user.id; 
-      const chats = await this.messageService.getAllChats(userId);
+      const userId: string = (req as any).user.id;
+      const page = Math.max(parseInt((req.query.page as string) || "1", 10), 1);
+      const limit = Math.min(
+        Math.max(parseInt((req.query.limit as string) || "20", 10), 1),
+        100
+      );
+      
+      const chats = await this.messageService.getAllChats(userId, page, limit);
       
       const privateChatDtos = chats.privateChats.map((chat: any) => 
         plainToInstance(ChatDto, chat, { excludeExtraneousValues: true })
@@ -160,12 +166,17 @@ export class MessageController {
         plainToInstance(ChatDto, chat, { excludeExtraneousValues: true })
       );
       
+      
       const chatDtos: ChatListResponse = {
         privateChats: privateChatDtos as any,
         groupChats: groupChatDtos as any,
         totalChats: privateChatDtos.length + groupChatDtos.length,
         totalUnread: chats.totalUnread || 0
       };
+      
+      res.setHeader("X-Total-Count", (chats.total || 0).toString());
+      res.setHeader("X-Page", page.toString());
+      res.setHeader("X-Limit", limit.toString());
       
       res.status(200).json(chatDtos);
     } catch (error) {

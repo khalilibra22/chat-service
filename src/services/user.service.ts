@@ -208,5 +208,51 @@ export class UserService {
   async updateUserProfile(userProfile: UserProfile): Promise<void> {
     await User.upsertProfile(userProfile);
   }
+
+  /**
+   * Update an existing user record
+   */
+  async updateUser(payload: {
+    userId: string;
+    fullname?: string;
+    email?: string;
+    profileImage?: string;
+  }): Promise<IUser> {
+    try {
+      const existingUser = await User.findOne({ userId: payload.userId });
+      if (!existingUser) {
+        throw new Error("User not found");
+      }
+
+      const updateData: any = {
+        lastFetchedAt: new Date(),
+      };
+
+      if (payload.fullname !== undefined) {
+        updateData.name = payload.fullname;
+      }
+      if (payload.email !== undefined) {
+        updateData.email = payload.email;
+      }
+      if (payload.profileImage !== undefined) {
+        updateData.profileImageUrl = payload.profileImage;
+      }
+
+      const updatedUser = await User.findOneAndUpdate(
+        { userId: payload.userId },
+        updateData,
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        throw new Error("Failed to update user");
+      }
+
+      return updatedUser;
+    } catch (error) {
+      console.error(`Error updating user ${payload.userId}:`, error);
+      throw error;
+    }
+  }
 }
 

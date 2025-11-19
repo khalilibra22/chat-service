@@ -7,6 +7,8 @@ export interface IUser extends Document {
   email?: string;
   metadata?: Record<string, any>;
   lastFetchedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const userSchema = new Schema(

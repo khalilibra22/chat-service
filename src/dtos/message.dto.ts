@@ -1,4 +1,5 @@
-import { Expose, Type } from "class-transformer";
+import { Expose, Type, Transform } from "class-transformer";
+import { getImageUrl } from "../utils";
 
 export class MessageViewDto {
   @Expose()
@@ -16,6 +17,7 @@ export class UserProfileDto {
   name?: string;
 
   @Expose()
+  @Transform(({ value }) => (value ? getImageUrl(value) : undefined))
   profileImageUrl?: string;
 
   @Expose()
@@ -24,7 +26,14 @@ export class UserProfileDto {
 
 export class MessageDto {
   @Expose()
-  _id?: string;
+  @Transform(({ obj }) => {
+    // Convert MongoDB ObjectId to string
+    if (obj._id) {
+      return obj._id.toString ? obj._id.toString() : String(obj._id);
+    }
+    return obj._id;
+  })
+  id?: string;
 
   @Expose()
   content?: string;
