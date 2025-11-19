@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document, Model } from "mongoose";
 
 export interface IUser extends Document {
   userId: string;
@@ -9,6 +9,11 @@ export interface IUser extends Document {
   lastFetchedAt: Date;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface IUserModel extends Model<IUser> {
+  findByUserId(userId: string): Promise<IUser | null>;
+  upsertProfile(userData: Partial<IUser>): Promise<IUser>;
 }
 
 const userSchema = new Schema(
@@ -41,5 +46,5 @@ userSchema.statics.findByUserId = async function (userId: string) {
   return this.findOne({ userId });
 };
 
-export default model<IUser>("User", userSchema);
+export default model<IUser, IUserModel>("User", userSchema);
 
