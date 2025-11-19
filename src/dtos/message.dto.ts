@@ -24,7 +24,7 @@ export class UserProfileDto {
 
 export class MessageDto {
   @Expose()
-  id?: string;
+  _id?: string;
 
   @Expose()
   content?: string;
