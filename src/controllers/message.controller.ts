@@ -30,9 +30,15 @@ export class MessageController {
         excludeExtraneousValues: true,
       });
       res.status(201).json(messageDto);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating private message:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+      const message = error?.message || "Internal Server Error";
+      const statusMap: Record<string, number> = {
+        "Sender not found": 404,
+        "Receiver not found": 404,
+      };
+      const status = statusMap[message] || 500;
+      res.status(status).json({ error: message });
     }
   };
 
@@ -60,9 +66,14 @@ export class MessageController {
       res.setHeader("X-Page", page.toString());
       res.setHeader("X-Limit", limit.toString());
       res.status(200).json(messageDtos);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: "Internal Server Error" });
+      const message = error?.message || "Internal Server Error";
+      const statusMap: Record<string, number> = {
+        "Sender not found": 404,
+      };
+      const status = statusMap[message] || 500;
+      res.status(status).json({ error: message });
     }
   };
 
@@ -98,9 +109,14 @@ export class MessageController {
       res.setHeader("X-Page", page.toString());
       res.setHeader("X-Limit", limit.toString());
       res.status(200).json(messageDtos);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: "Internal Server Error" });
+      const message = error?.message || "Internal Server Error";
+      const statusMap: Record<string, number> = {
+        "Sender not found": 404,
+      };
+      const status = statusMap[message] || 500;
+      res.status(status).json({ error: message });
     }
   };
 
@@ -133,8 +149,14 @@ export class MessageController {
 
   getAllChats = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId: string = (req as any).user.id; 
-      const chats: AllChatsResponse = await this.messageService.getAllChats(userId);
+      const userId: string = (req as any).user.id;
+      const page = Math.max(parseInt((req.query.page as string) || "1", 10), 1);
+      const limit = Math.min(
+        Math.max(parseInt((req.query.limit as string) || "20", 10), 1),
+        100
+      );
+      
+      const chats = await this.messageService.getAllChats(userId, page, limit);
       
       const privateChatDtos = chats.privateChats.map((chat: any) => 
         plainToInstance(ChatDto, chat, { excludeExtraneousValues: true })
@@ -144,15 +166,70 @@ export class MessageController {
         plainToInstance(ChatDto, chat, { excludeExtraneousValues: true })
       );
       
+      
       const chatDtos: ChatListResponse = {
         privateChats: privateChatDtos as any,
         groupChats: groupChatDtos as any,
-        totalChats: privateChatDtos.length + groupChatDtos.length
+        totalChats: privateChatDtos.length + groupChatDtos.length,
+        totalUnread: chats.totalUnread || 0
       };
+      
+      res.setHeader("X-Total-Count", (chats.total || 0).toString());
+      res.setHeader("X-Page", page.toString());
+      res.setHeader("X-Limit", limit.toString());
       
       res.status(200).json(chatDtos);
     } catch (error) {
       console.error(error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+
+  markMessageAsViewed = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { messageId } = req.params;
+      const userId = (req as any).user.id;
+
+      const updatedMessage = await this.messageService.markMessageViewed(
+        messageId,
+        userId
+      );
+
+      const messageDto = plainToInstance(MessageDto, updatedMessage, {
+        excludeExtraneousValues: true,
+      });
+
+      res.status(200).json(messageDto);
+    } catch (error) {
+      console.error("Error marking message as viewed:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+
+  getMessageViews = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { messageId } = req.params;
+      const views = await this.messageService.getMessageViews(messageId);
+      res.status(200).json({ views });
+    } catch (error) {
+      console.error("Error fetching message views:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+
+  checkMessageViewed = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { messageId } = req.params;
+      const userId = (req as any).user.id;
+      
+      const hasViewed = await this.messageService.hasUserViewedMessage(
+        messageId,
+        userId
+      );
+
+      res.status(200).json({ viewed: hasViewed });
+    } catch (error) {
+      console.error("Error checking message view status:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   };

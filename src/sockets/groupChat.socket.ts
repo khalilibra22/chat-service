@@ -99,4 +99,38 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
     socket.to(data.groupId).emit("receive-group-typing", typingData);
     //console.log(`User ${socket.data.userId} stopped typing in group ${data.groupId}`);
   });
+
+  // Handle group message view updates
+  socket.on("group-message-viewed", async (data: { messageId: string; groupId: string }, callback?: (response: any) => void) => {
+    try {
+      const { messageId, groupId } = data;
+      const userId = socket.data.userId;
+
+      // Verify user is a group member
+      const isGroupMember = await groupService.isUserInGroup(userId, groupId);
+      if (!isGroupMember) {
+        if (callback) callback({ error: "User is not a member of the group" });
+        return;
+      }
+
+      const updatedMessage = await messageService.markMessageViewed(messageId, userId);
+
+      const messageDto = plainToInstance(MessageDto, updatedMessage, {
+        excludeExtraneousValues: true,
+      });
+
+      // Broadcast view update to all group members
+      io.to(groupId).emit("message-view-updated", {
+        messageId,
+        userId,
+        viewedAt: new Date(),
+        groupId,
+      });
+
+      if (callback) callback({ success: true, message: messageDto });
+    } catch (error) {
+      console.error("Group message view error:", error);
+      if (callback) callback({ error: "Failed to mark message as viewed" });
+    }
+  });
 };

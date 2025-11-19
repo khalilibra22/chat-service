@@ -33,4 +33,33 @@ export class GroupService {
       throw new Error("Error checking group membership");
     }
   }
+
+  async joinGroup(userId: string, groupId: string): Promise<any> {
+    try {
+      if (!userId) {
+        throw new Error("User ID is required");
+      }
+
+      if (!Types.ObjectId.isValid(groupId)) {
+        throw new Error("Invalid group ID");
+      }
+
+      const group = await Group.findById(groupId);
+      if (!group) {
+        throw new Error("Group not found");
+      }
+
+      if (group.members.includes(userId)) {
+        throw new Error("User already in group");
+      }
+
+      group.members.push(userId);
+      await group.save();
+
+      return group;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
 }

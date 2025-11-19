@@ -11,8 +11,12 @@ export class GroupController {
 
   createChatGroup = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { name, members = [] } = req.body;
-      const creatorId = (req as any).user.id;
+      const { name, members = [], groupType, userId } = req.body;
+      if (!userId) {
+        res.status(400).json({ error: "User ID is required" });
+        return;
+      }
+      const creatorId = userId;
       
       // Ensure creator is in members array if not already present
       const membersList = Array.isArray(members) ? members : [];
@@ -20,7 +24,12 @@ export class GroupController {
         membersList.push(creatorId);
       }
       
-      const group = await this.groupService.createGroup({ name, members: membersList });
+      const groupData: any = { name, members: membersList };
+      if (groupType) {
+        groupData.groupType = groupType;
+      }
+      
+      const group = await this.groupService.createGroup(groupData);
       
       // Transform the response using GroupDto
       const groupDto = plainToClass(GroupDto, group, { excludeExtraneousValues: true });
@@ -37,12 +46,45 @@ export class GroupController {
       const groups = await this.groupService.getUserGroups(userId);
       
       // Transform the response using GroupDto
-      const groupDtos= plainToClass(GroupDto, groups, { excludeExtraneousValues: true })
-      
+      const groupDtos = plainToClass(GroupDto, groups, {
+        excludeExtraneousValues: true,
+      });
+
       res.status(200).json(groupDtos);
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+
+  joinGroup = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { groupId } = req.params;
+      const { userId } = req.body;
+
+      if (!userId) {
+        res.status(400).json({ error: "User ID is required" });
+        return;
+      }
+
+      const group = await this.groupService.joinGroup(userId, groupId);
+      
+      const groupDto = plainToClass(GroupDto, group, { excludeExtraneousValues: true });
+      res.status(200).json(groupDto);
+    } catch (error: any) {
+      console.error(error);
+      const message = error?.message || "Internal Server Error";
+
+      const statusMap: Record<string, number> = {
+        "User ID is required": 400,
+        "Invalid group ID": 400,
+        "Group not found": 404,
+        "User already in group": 409,
+      };
+
+      const status = statusMap[message] || 500;
+
+      res.status(status).json({ error: message });
     }
   };
 }

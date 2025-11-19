@@ -7,6 +7,8 @@ A real-time chat microservice built with Socket.IO, Express, and MongoDB. Suppor
 - **Private Messaging**: One-on-one real-time chat between users
 - **Group Chat**: Multi-user group conversations
 - **Typing Indicators**: Real-time typing status for both private and group chats
+- **Message View Tracking**: Track which users have viewed each message
+- **User Profile Integration**: Cached user profiles from external user service
 - **JWT Authentication**: Secure socket connections with JWT tokens
 - **Versioned API**: Socket.IO namespaces for API versioning
 - **RESTful Endpoints**: HTTP API for message and group management
@@ -34,7 +36,19 @@ PORT=5002
 MONGO_URI=mongodb://localhost:27017/chat-service
 JWT_SECRET=your-secret-key
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
+# User Service Integration
+USER_SERVICE_URL=http://localhost:3001
+USER_CACHE_EXPIRY_HOURS=24
 ```
+
+**Environment Variable Descriptions:**
+- `PORT`: Port number for the chat service
+- `MONGO_URI`: MongoDB connection string
+- `JWT_SECRET`: Secret key for JWT token verification
+- `CORS_ORIGINS`: Comma-separated list of allowed CORS origins
+- `USER_SERVICE_URL`: Base URL of the external user service for fetching user profiles
+- `USER_CACHE_EXPIRY_HOURS`: Number of hours before cached user profiles expire (default: 24)
 
 ### Running the Service
 
@@ -105,6 +119,20 @@ const socket = io('https://your-server.com/ws/v1', {
 **Server → Client:**
 - `receive-private-message`: Receive a private message
 - `receive-private-typing`: Receive typing status updates
+- `message-view-updated`: Receive notification when a message is viewed
+  ```javascript
+  socket.on('message-view-updated', (data) => {
+    console.log(`Message ${data.messageId} viewed by ${data.userId}`);
+  });
+  ```
+
+**Message View Tracking:**
+- `message-viewed`: Mark a message as viewed
+  ```javascript
+  socket.emit('message-viewed', {
+    messageId: 'messageId123'
+  });
+  ```
 
 #### Group Chat
 
@@ -128,6 +156,16 @@ const socket = io('https://your-server.com/ws/v1', {
 **Server → Client:**
 - `receive-group-message`: Receive a group message
 - `receive-group-typing`: Receive typing status updates from group members
+- `message-view-updated`: Receive notification when a group message is viewed
+
+**Group Message View Tracking:**
+- `group-message-viewed`: Mark a group message as viewed
+  ```javascript
+  socket.emit('group-message-viewed', {
+    messageId: 'messageId123',
+    groupId: 'groupId123'
+  });
+  ```
 
 ### Future Versions
 
@@ -142,10 +180,96 @@ The service also provides RESTful endpoints for message and group management:
 
 ### Endpoints
 
-- `GET /messages`: Retrieve messages
-- `POST /groups`: Create a new group
-- `GET /groups`: List groups
-- Additional endpoints available in the routes directory
+#### Messages
+- `POST /v1/messages/private/:otherUserId`: Send a private message
+- `GET /v1/messages/private/:otherUserId`: Get private message history (paginated)
+- `POST /v1/messages/group/:groupId`: Send a group message
+- `GET /v1/messages/group/:groupId`: Get group message history (paginated)
+- `GET /v1/messages/chats`: Get all user chats (private and group)
+
+#### Message Views
+- `PATCH /v1/messages/:messageId/view`: Mark a message as viewed by current user
+- `GET /v1/messages/:messageId/views`: Get all view records for a message
+- `GET /v1/messages/:messageId/viewed`: Check if current user has viewed a message
+
+#### Groups
+- `POST /v1/groups`: Create a new group
+  - Request body:
+    ```json
+    {
+      "name": "Group Name",
+      "members": ["userId1", "userId2"],
+      "groupType": "pre-booking"
+    }
+    ```
+  - `groupType` options: `one-on-one`, `pre-booking` (default), `group-lesson`, `live-course`
+- `GET /v1/groups`: List user's groups
+- Additional group management endpoints available in the routes directory
+
+## Distributed Features
+
+### User Profile Integration
+
+The chat service integrates with an external user service to fetch and cache user profile information. This enables rich message displays with sender/receiver details.
+
+**How it works:**
+1. When a message is created, the service automatically fetches user profiles from the configured `USER_SERVICE_URL`
+2. User profiles are cached in the local MongoDB database to reduce external API calls
+3. Cached profiles expire after `USER_CACHE_EXPIRY_HOURS` (default: 24 hours)
+4. If the user service is unavailable, the chat service falls back to stale cache data
+
+**User Profile Data:**
+- `userId`: Unique user identifier
+- `name`: User's display name
+- `profileImageUrl`: URL to user's profile image
+- `email`: User's email address
+- `metadata`: Additional user metadata
+
+**Message Response Format:**
+```json
+{
+  "id": "messageId123",
+  "content": "Hello!",
+  "senderId": "user123",
+  "receiverId": "user456",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "senderProfile": {
+    "userId": "user123",
+    "name": "John Doe",
+    "profileImageUrl": "https://example.com/avatar.jpg",
+    "email": "john@example.com"
+  },
+  "receiverProfile": {
+    "userId": "user456",
+    "name": "Jane Smith",
+    "profileImageUrl": "https://example.com/avatar2.jpg",
+    "email": "jane@example.com"
+  },
+  "views": [
+    {
+      "userId": "user456",
+      "viewedAt": "2024-01-01T12:05:00Z"
+    }
+  ]
+}
+```
+
+### Message View Tracking
+
+The service tracks which users have viewed each message, enabling read receipts and message status indicators.
+
+**Features:**
+- Per-user view tracking with timestamps
+- Idempotent view marking (duplicate views are ignored)
+- Real-time view status updates via Socket.IO
+- REST API endpoints for view management
+- Optimized database indexes for fast view lookups
+
+**Use Cases:**
+- Read receipts in private chats
+- Message status indicators (sent, delivered, read)
+- Group message read tracking
+- Analytics on message engagement
 
 ## Architecture
 

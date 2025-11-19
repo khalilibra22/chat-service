@@ -4,9 +4,8 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "../config/database";
-import { v1Router } from "../routes";
 import { chatSocket } from "../sockets";
-import { AuthMiddleware } from "../utils/auth.middleware";
+import { v1Router } from "./app-v1";
 
 dotenv.config();
 

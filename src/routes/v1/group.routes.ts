@@ -10,12 +10,13 @@ const groupController = new GroupController();
 
 router.post(
   "/",
-  AuthMiddleware.verifyToken,
   ValidationMiddleware.validate(createGroupValidation),
   groupController.createChatGroup
 );
 
 router.get("/", AuthMiddleware.verifyToken, groupController.getUserGroups);
+
+router.post("/:groupId/join", groupController.joinGroup);
 
 export { router as groupRoutes };
 

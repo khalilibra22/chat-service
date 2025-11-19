@@ -7,6 +7,7 @@ export type {
   BaseChat,
   PrivateChat,
   GroupChat,
+  GroupType,
   Chat,
   AllChatsResponse,
   ChatListResponse,

@@ -1,5 +1,13 @@
 import { Schema, model } from "mongoose";
 
+const viewSchema = new Schema(
+  {
+    userId: { type: String, required: true },
+    viewedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const messageSchema = new Schema(
   {
     senderId: { type: String, required: true },
@@ -8,6 +16,7 @@ const messageSchema = new Schema(
     content: { type: String, required: true, trim: true, maxlength: 1000 },
     chatType: { type: String, enum: ["private", "group"], required: true },
     timestamp: { type: Date, default: Date.now, index: true },
+    views: { type: [viewSchema], default: [] },
   },
   { timestamps: true }
 );
@@ -23,5 +32,8 @@ messageSchema.index({ chatType: 1, groupId: 1, timestamp: 1 });
 // User's chats (either as sender or receiver)
 messageSchema.index({ senderId: 1, timestamp: 1 });
 messageSchema.index({ receiverId: 1, timestamp: 1 });
+
+// Index for view lookups (messageId + userId)
+messageSchema.index({ _id: 1, "views.userId": 1 });
 
 export default model("Message", messageSchema);
