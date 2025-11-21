@@ -236,6 +236,7 @@ export class MessageService {
 
           return {
             ...chat,
+            _id: groupId.toString(), // Explicitly set _id to groupId to ensure it's the group ID
             chatType: "group",
             groupName: groupInfo?.name,
             groupType: groupInfo?.groupType,
