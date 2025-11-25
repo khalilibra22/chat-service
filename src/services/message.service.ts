@@ -1,12 +1,13 @@
+import mongoose from "mongoose";
 import Message from "../models/message.model";
 import Group from "../models/group.model";
-import { 
-  CreateMessageData, 
-  AllChatsResponse, 
-  PaginatedResponse, 
-  MessageHistoryParams, 
+import {
+  CreateMessageData,
+  AllChatsResponse,
+  PaginatedResponse,
+  MessageHistoryParams,
   GroupMessageHistoryParams,
-  UserProfile 
+  UserProfile
 } from "../types/chat.types";
 import { UserService } from "./user.service";
 
@@ -45,7 +46,7 @@ export class MessageService {
         chatType: "group",
       });
 
-      return await this.enrichMessageWithProfiles(message);
+      return await this.enrichMessageWithProfiles(message, senderProfile);
     } catch (error) {
       console.error("Error creating group message:", error);
       throw error;
@@ -103,12 +104,62 @@ export class MessageService {
     limit: number
   ): Promise<PaginatedResponse<any>> {
     try {
-      const filter = { chatType: "group" as const, groupId };
-      const total = await Message.countDocuments(filter);
-      const items = await Message.find(filter)
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .sort({ timestamp: -1 });
+      const skip = (page - 1) * limit;
+      const groupObjectId = new mongoose.Types.ObjectId(groupId);
+
+      const [result] = await Message.aggregate([
+        {
+          $match: {
+            chatType: "group",
+            groupId: groupObjectId
+          }
+        },
+        {
+          $facet: {
+            items: [
+              { $sort: { timestamp: -1 } },
+              { $skip: skip },
+              { $limit: limit },
+              {
+                $lookup: {
+                  from: "users",
+                  localField: "senderId",
+                  foreignField: "userId",
+                  as: "senderProfile",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$senderProfile",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  content: 1,
+                  senderId: 1,
+                  groupId: 1,
+                  chatType: 1,
+                  timestamp: 1,
+                  views: 1,
+                  "senderProfile.userId": 1,
+                  "senderProfile.name": 1,
+                  "senderProfile.profileImageUrl": 1,
+                  "senderProfile.email": 1,
+                },
+              },
+            ],
+            total: [
+              { $count: "count" }
+            ],
+          },
+        },
+      ]);
+
+      const items = result.items || [];
+      const total = result.total[0]?.count || 0;
+
       return { items, total, page, limit };
     } catch (error) {
       console.error(error);
@@ -144,7 +195,7 @@ export class MessageService {
       // Get all groups user is a member of
       const userGroups = await Group.find({ members: userId }).select('_id name groupType');
       const groupIds = userGroups.map(g => g._id);
-      
+
       // Get group chats - last message for each group
       const groupChats = await Message.aggregate([
         {
@@ -164,12 +215,12 @@ export class MessageService {
 
       // Create maps for group metadata
       const groupMap = new Map(userGroups.map(g => [g._id.toString(), { name: g.name, groupType: g.groupType }]));
-      
+
       // Calculate unread counts for private chats
       const enrichedPrivateChats = await Promise.all(
         privateChats.map(async (chat) => {
           const otherUserId = chat._id;
-          
+
           // Count unread messages: messages where receiverId = userId and user not in views
           const unreadCount = await Message.countDocuments({
             chatType: "private",
@@ -186,7 +237,7 @@ export class MessageService {
           // Format timestamp and create preview
           const lastMsg = chat.lastMessage;
           const formattedTimestamp = this.formatTimestamp(lastMsg?.timestamp);
-          const lastMessagePreview = lastMsg?.content 
+          const lastMessagePreview = lastMsg?.content
             ? (lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + "..." : lastMsg.content)
             : "";
 
@@ -208,7 +259,7 @@ export class MessageService {
         groupChats.map(async (chat) => {
           const groupId = chat._id;
           const groupInfo = groupMap.get(groupId.toString());
-          
+
           // Count unread messages: messages in this group where user not in views
           const unreadCount = await Message.countDocuments({
             chatType: "group",
@@ -221,15 +272,15 @@ export class MessageService {
           // Format timestamp and create preview with sender name
           const lastMsg = chat.lastMessage;
           const formattedTimestamp = this.formatTimestamp(lastMsg?.timestamp);
-          
+
           let lastMessagePreview = "";
           if (lastMsg?.content) {
-            const senderProfile = lastMsg.senderId 
+            const senderProfile = lastMsg.senderId
               ? await this.userService.getUserProfile(lastMsg.senderId)
               : null;
             const senderName = senderProfile?.name || "Someone";
-            const content = lastMsg.content.length > 40 
-              ? lastMsg.content.substring(0, 40) + "..." 
+            const content = lastMsg.content.length > 40
+              ? lastMsg.content.substring(0, 40) + "..."
               : lastMsg.content;
             lastMessagePreview = `${senderName}: ${content}`;
           }
@@ -252,7 +303,7 @@ export class MessageService {
 
       // Calculate total unread (before pagination)
       const totalUnread = enrichedPrivateChats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0) +
-                          enrichedGroupChats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+        enrichedGroupChats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
 
       // Combine all chats and sort by last message timestamp
       const allChats = [
@@ -279,13 +330,13 @@ export class MessageService {
       const paginatedPrivateChats = paginatedChats
         .filter(chat => chat.chatType === "private")
         .map(({ sortTimestamp, ...chat }) => chat);
-      
+
       const paginatedGroupChats = paginatedChats
         .filter(chat => chat.chatType === "group")
         .map(({ sortTimestamp, ...chat }) => chat);
 
-      return { 
-        privateChats: paginatedPrivateChats, 
+      return {
+        privateChats: paginatedPrivateChats,
         groupChats: paginatedGroupChats,
         totalUnread,
         total,
@@ -307,12 +358,12 @@ export class MessageService {
    */
   private formatTimestamp(timestamp?: Date): string {
     if (!timestamp) return "";
-    
+
     const now = new Date();
     const msgDate = new Date(timestamp);
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
-    
+
     const diffTime = today.getTime() - msgDay.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
@@ -338,12 +389,16 @@ export class MessageService {
   /**
    * Enrich a message with user profile information
    */
-  private async enrichMessageWithProfiles(message: any): Promise<any> {
+  private async enrichMessageWithProfiles(message: any, knownSenderProfile?: UserProfile | null): Promise<any> {
     const messageObj = message.toObject ? message.toObject() : message;
-    
+
     // Fetch sender profile
     if (messageObj.senderId) {
-      const senderProfile = await this.userService.getCachedUserProfile(messageObj.senderId);
+      let senderProfile = knownSenderProfile;
+      if (!senderProfile) {
+        senderProfile = await this.userService.getCachedUserProfile(messageObj.senderId);
+      }
+
       if (senderProfile) {
         messageObj.senderProfile = senderProfile;
       }
@@ -377,7 +432,7 @@ export class MessageService {
     // Enrich each message
     return messages.map(msg => {
       const messageObj = msg.toObject ? msg.toObject() : msg;
-      
+
       if (messageObj.senderId) {
         const senderProfile = profiles.get(messageObj.senderId);
         if (senderProfile) {
@@ -408,7 +463,7 @@ export class MessageService {
       }
 
       const alreadyViewed = message.views?.some((view: any) => view.userId === userId);
-      
+
       if (alreadyViewed) {
         return message; // Already viewed, no need to update
       }

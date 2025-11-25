@@ -58,6 +58,13 @@ export interface UserProfile {
   metadata?: Record<string, any>;
 }
 
+// User status types
+export interface UserStatus {
+  userId: string;
+  isOnline: boolean;
+  lastSeenAt?: Date;
+}
+
 // Message service types
 export interface CreateMessageData {
   senderId: string;

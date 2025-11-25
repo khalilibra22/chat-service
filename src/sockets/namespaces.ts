@@ -1,6 +1,7 @@
 import { Server, Namespace } from "socket.io";
-import { privateChatHandler } from "./privateChat.socket";
-import { groupChatHandler } from "./groupChat.socket";
+import { privateChatHandler } from "./private-chat.socket";
+import { groupChatHandler } from "./group-chat.socket";
+import { UserService } from "../services/user.service";
 
 export interface SocketVersion {
   version: string;
@@ -26,16 +27,46 @@ export const SOCKET_VERSIONS: SocketVersion[] = [
  * Register handlers for a specific namespace version
  */
 export const registerNamespaceHandlers = (namespace: Namespace, version: string) => {
-  namespace.on("connection", (socket) => {
+  const userService = new UserService();
+
+  namespace.on("connection", async (socket) => {
     const user = socket.data.userId;
     console.log(`[${version}] Socket connected: ${user} (${socket.id})`);
+
+    // Set user as online
+    try {
+      await userService.setUserOnline(user);
+
+      // Broadcast status change to all connected clients
+      namespace.emit("user-status-changed", {
+        userId: user,
+        isOnline: true,
+      });
+    } catch (error) {
+      console.error(`Error setting user ${user} online:`, error);
+    }
 
     // Register chat handlers
     privateChatHandler(namespace, socket);
     groupChatHandler(namespace, socket);
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       console.log(`[${version}] Socket ${socket.id} disconnected`);
+
+      // Set user as offline
+      try {
+        await userService.setUserOffline(user);
+        const status = await userService.getUserStatus(user);
+
+        // Broadcast status change to all connected clients
+        namespace.emit("user-status-changed", {
+          userId: user,
+          isOnline: false,
+          lastSeenAt: status.lastSeenAt,
+        });
+      } catch (error) {
+        console.error(`Error setting user ${user} offline:`, error);
+      }
     });
   });
 };
