@@ -1,5 +1,6 @@
 import { Server, Socket, Namespace } from "socket.io";
 import { MessageService } from "../services/message.service";
+import { UserService } from "../services/user.service";
 import { ValidationMiddleware } from "../utils/validation.middleware";
 import { privateSocketMessageValidation } from "../validations/message.validation";
 import { plainToInstance } from "class-transformer";
@@ -7,6 +8,7 @@ import { MessageDto } from "../dtos/message.dto";
 import { PrivateMessageData, SocketUser, PrivateTypingData } from "../types/chat.types";
 
 const messageService = new MessageService();
+const userService = new UserService();
 
 export const privateChatHandler = (io: Server | Namespace, socket: Socket & { data: SocketUser }) => {
   // Join personal room
@@ -38,6 +40,14 @@ export const privateChatHandler = (io: Server | Namespace, socket: Socket & { da
 
         const message = await messageService.createPrivateMessage(messageData);
 
+        // Ensure sender profile is present
+        if (!message.senderProfile) {
+          const senderProfile = await userService.getCachedUserProfile(socket.data.userId);
+          if (senderProfile) {
+            message.senderProfile = senderProfile;
+          }
+        }
+
         const messageDto = plainToInstance(MessageDto, message, {
           excludeExtraneousValues: true,
         });
@@ -62,7 +72,7 @@ export const privateChatHandler = (io: Server | Namespace, socket: Socket & { da
       to: data.to
     };
     //console.log("typingData", typingData);
-    
+
     // Emit to the recipient
     io.to(data.to).emit("receive-private-typing", typingData);
     //console.log(`User ${socket.data.userId} started typing to ${data.to}`);
@@ -75,7 +85,7 @@ export const privateChatHandler = (io: Server | Namespace, socket: Socket & { da
       isTyping: false,
       to: data.to
     };
-    
+
     // Emit to the recipient
     io.to(data.to).emit("receive-private-typing", typingData);
     //console.log(`User ${socket.data.userId} stopped typing to ${data.to}`);
