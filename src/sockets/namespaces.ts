@@ -1,6 +1,6 @@
 import { Server, Namespace } from "socket.io";
-import { privateChatHandler } from "./privateChat.socket";
-import { groupChatHandler } from "./groupChat.socket";
+import { privateChatHandler } from "./private-chat.socket";
+import { groupChatHandler } from "./group-chat.socket";
 
 export interface SocketVersion {
   version: string;
