@@ -1,10 +1,11 @@
 import User, { IUser } from "../models/user.model";
-import { UserProfile } from "../types/chat.types";
+import { UserProfile, UserStatus } from "../types/chat.types";
 import redis from "../config/redis";
 
 export class UserService {
   private userServiceUrl: string;
   private cacheExpirySeconds: number;
+  private statusExpirySeconds: number = 300; // 5 minutes
 
   constructor() {
     this.userServiceUrl = process.env.USER_SERVICE_URL || "https://user-service-dev-ys17.onrender.com/v1";
@@ -272,6 +273,156 @@ export class UserService {
     } catch (error) {
       console.error(`Error updating user ${payload.userId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Set user as online (called when socket connects)
+   */
+  async setUserOnline(userId: string): Promise<void> {
+    try {
+      const now = new Date();
+
+      // Set in Redis with 5-minute expiration (auto-cleanup for stale connections)
+      await redis.set(
+        `user:status:${userId}`,
+        JSON.stringify({ isOnline: true, timestamp: now.toISOString() }),
+        "EX",
+        this.statusExpirySeconds
+      );
+
+      // Update MongoDB with lastSeenAt
+      await User.findOneAndUpdate(
+        { userId },
+        { isOnline: true, lastSeenAt: now },
+        { upsert: true }
+      );
+
+      console.log(`User ${userId} is now online`);
+    } catch (error) {
+      console.error(`Error setting user ${userId} online:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set user as offline (called when socket disconnects)
+   */
+  async setUserOffline(userId: string): Promise<void> {
+    try {
+      const now = new Date();
+
+      // Remove from Redis
+      await redis.del(`user:status:${userId}`);
+
+      // Update MongoDB with lastSeenAt
+      await User.findOneAndUpdate(
+        { userId },
+        { isOnline: false, lastSeenAt: now },
+        { upsert: true }
+      );
+
+      console.log(`User ${userId} is now offline`);
+    } catch (error) {
+      console.error(`Error setting user ${userId} offline:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user online status
+   */
+  async getUserStatus(userId: string): Promise<UserStatus> {
+    try {
+      // Check Redis first for real-time status
+      const redisStatus = await redis.get(`user:status:${userId}`);
+
+      if (redisStatus) {
+        return {
+          userId,
+          isOnline: true,
+          lastSeenAt: undefined, // Online users don't need lastSeenAt
+        };
+      }
+
+      // If not in Redis, user is offline - get lastSeenAt from MongoDB
+      const user = await User.findOne({ userId });
+
+      return {
+        userId,
+        isOnline: false,
+        lastSeenAt: user?.lastSeenAt,
+      };
+    } catch (error) {
+      console.error(`Error getting status for user ${userId}:`, error);
+      // Return offline status on error
+      return {
+        userId,
+        isOnline: false,
+      };
+    }
+  }
+
+  /**
+   * Get bulk user statuses
+   */
+  async getBulkUserStatus(userIds: string[]): Promise<Map<string, UserStatus>> {
+    try {
+      const statusMap = new Map<string, UserStatus>();
+
+      // Get all Redis keys at once
+      const redisKeys = userIds.map(id => `user:status:${id}`);
+      const redisResults = await Promise.all(
+        redisKeys.map(key => redis.get(key))
+      );
+
+      // Track which users are offline (not in Redis)
+      const offlineUserIds: string[] = [];
+
+      userIds.forEach((userId, index) => {
+        if (redisResults[index]) {
+          // User is online
+          statusMap.set(userId, {
+            userId,
+            isOnline: true,
+          });
+        } else {
+          // User is offline, need to get lastSeenAt from MongoDB
+          offlineUserIds.push(userId);
+        }
+      });
+
+      // Batch fetch lastSeenAt for offline users
+      if (offlineUserIds.length > 0) {
+        const offlineUsers = await User.find(
+          { userId: { $in: offlineUserIds } },
+          { userId: 1, lastSeenAt: 1 }
+        );
+
+        offlineUsers.forEach(user => {
+          statusMap.set(user.userId, {
+            userId: user.userId,
+            isOnline: false,
+            lastSeenAt: user.lastSeenAt,
+          });
+        });
+
+        // For users not found in DB, set default offline status
+        offlineUserIds.forEach(userId => {
+          if (!statusMap.has(userId)) {
+            statusMap.set(userId, {
+              userId,
+              isOnline: false,
+            });
+          }
+        });
+      }
+
+      return statusMap;
+    } catch (error) {
+      console.error(`Error getting bulk user status:`, error);
+      // Return empty map on error
+      return new Map();
     }
   }
 }

@@ -7,6 +7,8 @@ export interface IUser extends Document {
   email?: string;
   metadata?: Record<string, any>;
   lastFetchedAt: Date;
+  isOnline: boolean;
+  lastSeenAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -24,6 +26,8 @@ const userSchema = new Schema(
     email: { type: String, index: true, sparse: true },
     metadata: { type: Schema.Types.Mixed },
     lastFetchedAt: { type: Date, default: Date.now },
+    isOnline: { type: Boolean, default: false },
+    lastSeenAt: { type: Date },
   },
   { timestamps: true }
 );

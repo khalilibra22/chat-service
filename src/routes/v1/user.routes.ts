@@ -18,5 +18,15 @@ router.put(
   userController.updateUser
 );
 
+router.get(
+  "/:userId/status",
+  userController.getUserStatus
+);
+
+router.post(
+  "/status/bulk",
+  userController.getBulkUserStatus
+);
+
 export { router as userRoutes };
 
