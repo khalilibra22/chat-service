@@ -1,13 +1,14 @@
 import User, { IUser } from "../models/user.model";
 import { UserProfile } from "../types/chat.types";
+import redis from "../config/redis";
 
 export class UserService {
   private userServiceUrl: string;
-  private cacheExpiryHours: number;
+  private cacheExpirySeconds: number;
 
   constructor() {
     this.userServiceUrl = process.env.USER_SERVICE_URL || "https://user-service-dev-ys17.onrender.com/v1";
-    this.cacheExpiryHours = parseInt(process.env.USER_CACHE_EXPIRY_HOURS || "24", 10);
+    this.cacheExpirySeconds = parseInt(process.env.USER_CACHE_EXPIRY_SECONDS || "86400", 10); // 24 hours
   }
 
   /**
@@ -40,21 +41,22 @@ export class UserService {
   }
 
   /**
-   * Get user profile from local cache only
+   * Get user profile from Redis cache
    */
   async getCachedUserProfile(userId: string): Promise<UserProfile | null> {
-    const user = await User.findByUserId(userId);
-    if (!user) {
-      return null;
-    }
+    try {
+      const cachedData = await redis.get(`user:${userId}`);
+      if (cachedData) {
+        return JSON.parse(cachedData) as UserProfile;
+      }
 
-    return {
-      userId: user.userId,
-      name: user.name,
-      profileImageUrl: user.profileImageUrl,
-      email: user.email,
-      metadata: user.metadata,
-    };
+      // If not in Redis, try local DB (as secondary cache) or fetch from service
+      return this.getUserProfile(userId);
+    } catch (error) {
+      console.error(`Redis error for user ${userId}:`, error);
+      // Fallback to standard flow
+      return this.getUserProfile(userId);
+    }
   }
 
   async getCachedUserProfiles(userIds: string[]): Promise<Map<string, UserProfile>> {
@@ -93,7 +95,7 @@ export class UserService {
       }
 
       const data = await response.json();
-      
+
       // Map the response to our UserProfile interface
       return {
         userId: data.id || data.userId || userId,
@@ -114,8 +116,8 @@ export class UserService {
   private isCacheValid(user: IUser): boolean {
     const now = new Date();
     const lastFetched = new Date(user.lastFetchedAt);
-    const hoursSinceLastFetch = (now.getTime() - lastFetched.getTime()) / (1000 * 60 * 60);
-    return hoursSinceLastFetch < this.cacheExpiryHours;
+    const secondsSinceLastFetch = (now.getTime() - lastFetched.getTime()) / 1000;
+    return secondsSinceLastFetch < this.cacheExpirySeconds;
   }
 
   /**
@@ -123,33 +125,45 @@ export class UserService {
    */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     try {
-      // Check cache first - use findByUserId instead of findById
+      // Check Redis first (redundant if called from getCachedUserProfile but good for direct calls)
+      const cachedData = await redis.get(`user:${userId}`);
+      if (cachedData) {
+        return JSON.parse(cachedData) as UserProfile;
+      }
+
+      // Check local DB (secondary cache)
       const cachedUser = await User.findByUserId(userId);
-      
+
       if (cachedUser && this.isCacheValid(cachedUser)) {
-        return {
+        const profile: UserProfile = {
           userId: cachedUser.userId,
           name: cachedUser.name,
           profileImageUrl: cachedUser.profileImageUrl,
           email: cachedUser.email,
           metadata: cachedUser.metadata,
         };
+        // Populate Redis
+        await redis.set(`user:${userId}`, JSON.stringify(profile), "EX", this.cacheExpirySeconds);
+        return profile;
       }
 
       // Fetch from service if not in cache or cache expired
       const userProfile = await this.fetchUserFromService(userId);
-      
+
       if (!userProfile) {
         return null;
       }
 
-      // Update cache using upsertProfile to handle existing users
+      // Update local DB
       await User.upsertProfile(userProfile);
-      
+
+      // Update Redis
+      await redis.set(`user:${userId}`, JSON.stringify(userProfile), "EX", this.cacheExpirySeconds);
+
       return userProfile;
     } catch (error) {
       console.error(`Error getting user profile for ${userId}:`, error);
-      
+
       // If service fails, try to return cached data even if expired
       const cachedUser = await User.findByUserId(userId);
       if (cachedUser) {
@@ -162,7 +176,7 @@ export class UserService {
           metadata: cachedUser.metadata,
         };
       }
-      
+
       return null;
     }
   }
@@ -180,7 +194,7 @@ export class UserService {
    */
   async ensureUserProfiles(userIds: string[]): Promise<Map<string, UserProfile>> {
     const profiles = new Map<string, UserProfile>();
-    
+
     // Fetch all profiles in parallel
     const results = await Promise.allSettled(
       userIds.map(userId => this.ensureUserProfile(userId))
@@ -199,14 +213,20 @@ export class UserService {
    * Invalidate cache for a specific user (force refresh on next fetch)
    */
   async invalidateUserCache(userId: string): Promise<void> {
-    await User.deleteOne({ userId });
+    await Promise.all([
+      User.deleteOne({ userId }),
+      redis.del(`user:${userId}`)
+    ]);
   }
 
   /**
    * Manually update user profile in cache
    */
   async updateUserProfile(userProfile: UserProfile): Promise<void> {
-    await User.upsertProfile(userProfile);
+    await Promise.all([
+      User.upsertProfile(userProfile),
+      redis.set(`user:${userProfile.userId}`, JSON.stringify(userProfile), "EX", this.cacheExpirySeconds)
+    ]);
   }
 
   /**

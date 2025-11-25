@@ -1,13 +1,11 @@
 import express, { NextFunction, Request, Response } from "express";
 import http from "http";
 import { Server } from "socket.io";
-import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "../config/database";
 import { chatSocket } from "../sockets";
 import { v1Router } from "./app-v1";
 
-dotenv.config();
 
 if (!process.env.JWT_SECRET) {
   console.error("Missing JWT_SECRET env var");

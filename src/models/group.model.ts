@@ -10,8 +10,8 @@ const groupSchema = new Schema(
     },
     groupType: {
       type: String,
-      enum: ["one-on-one", "pre-booking", "group", "live"],
-      default: "pre-booking",
+      enum: ["one-on-one", "prerecorded", "group", "live"],
+      default: "prerecorded",
     },
   },
   { timestamps: true }

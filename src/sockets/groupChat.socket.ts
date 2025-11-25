@@ -3,12 +3,14 @@ import { MessageService } from "../services/message.service";
 import { ValidationMiddleware } from "../utils/validation.middleware";
 import { groupSocketMessageValidation } from "../validations/message.validation";
 import { GroupService } from "../services/group.service";
+import { UserService } from "../services/user.service";
 import { plainToInstance } from "class-transformer";
 import { MessageDto } from "../dtos/message.dto";
 import { GroupMessageData, SocketUser, GroupTypingData, SocketUserGroup } from "../types/chat.types";
 
 const messageService = new MessageService();
 const groupService = new GroupService();
+const userService = new UserService();
 
 export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data: SocketUser & { groupId?: string } }) => {
   // Join group room
@@ -58,6 +60,14 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
         };
         const message = await messageService.createGroupMessage(messageData);
 
+        // Ensure sender profile is present
+        if (!message.senderProfile) {
+          const senderProfile = await userService.getCachedUserProfile(socket.data.userId);
+          if (senderProfile) {
+            message.senderProfile = senderProfile;
+          }
+        }
+
         const messageDto = plainToInstance(MessageDto, message, {
           excludeExtraneousValues: true,
         });
@@ -81,7 +91,7 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
       isTyping: true,
       groupId: data.groupId
     };
-    
+
     // Emit to all other members in the group (excluding sender)
     socket.to(data.groupId).emit("receive-group-typing", typingData);
     //console.log(`User ${socket.data.userId} started typing in group ${data.groupId}`);
@@ -94,7 +104,7 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
       isTyping: false,
       groupId: data.groupId
     };
-    
+
     // Emit to all other members in the group (excluding sender)
     socket.to(data.groupId).emit("receive-group-typing", typingData);
     //console.log(`User ${socket.data.userId} stopped typing in group ${data.groupId}`);

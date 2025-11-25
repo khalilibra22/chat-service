@@ -46,7 +46,7 @@ export class MessageService {
         chatType: "group",
       });
 
-      return await this.enrichMessageWithProfiles(message);
+      return await this.enrichMessageWithProfiles(message, senderProfile);
     } catch (error) {
       console.error("Error creating group message:", error);
       throw error;
@@ -389,12 +389,16 @@ export class MessageService {
   /**
    * Enrich a message with user profile information
    */
-  private async enrichMessageWithProfiles(message: any): Promise<any> {
+  private async enrichMessageWithProfiles(message: any, knownSenderProfile?: UserProfile | null): Promise<any> {
     const messageObj = message.toObject ? message.toObject() : message;
 
     // Fetch sender profile
     if (messageObj.senderId) {
-      const senderProfile = await this.userService.getCachedUserProfile(messageObj.senderId);
+      let senderProfile = knownSenderProfile;
+      if (!senderProfile) {
+        senderProfile = await this.userService.getCachedUserProfile(messageObj.senderId);
+      }
+
       if (senderProfile) {
         messageObj.senderProfile = senderProfile;
       }
