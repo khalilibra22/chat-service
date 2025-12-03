@@ -188,7 +188,7 @@ export class MessageService {
                 "$senderId",
               ],
             },
-            lastMessage: { $last: "$$ROOT" },
+            lastMessage: { $first: "$$ROOT" },
           },
         },
       ]);
@@ -209,7 +209,7 @@ export class MessageService {
         {
           $group: {
             _id: "$groupId",
-            lastMessage: { $last: "$$ROOT" },
+            lastMessage: { $first: "$$ROOT" },
           },
         },
       ]);
