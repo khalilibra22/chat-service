@@ -10,6 +10,7 @@ import {
   UserProfile
 } from "../types/chat.types";
 import { UserService } from "./user.service";
+import logger from "../utils/logger";
 
 export class MessageService {
   private userService: UserService;
@@ -26,7 +27,7 @@ export class MessageService {
 
       return await this.enrichMessageWithProfiles(message);
     } catch (error) {
-      console.error("Error creating private message:", error);
+      logger.error({ err: error }, "Error creating private message");
       throw error;
     }
   }
@@ -48,7 +49,7 @@ export class MessageService {
 
       return await this.enrichMessageWithProfiles(message, senderProfile);
     } catch (error) {
-      console.error("Error creating group message:", error);
+      logger.error({ err: error }, "Error creating group message");
       throw error;
     }
   }
@@ -67,7 +68,7 @@ export class MessageService {
       }).sort({ timestamp: 1 });
       return messages;
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching private message history");
       throw new Error("Error fetching private message history");
     }
   }
@@ -93,7 +94,7 @@ export class MessageService {
         .sort({ timestamp: -1 });
       return { items, total, page, limit };
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching private message history paginated");
       throw new Error("Error fetching private message history");
     }
   }
@@ -162,7 +163,7 @@ export class MessageService {
 
       return { items, total, page, limit };
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching group message history");
       throw new Error("Error fetching group message history");
     }
   }
@@ -344,7 +345,7 @@ export class MessageService {
         limit
       };
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching chats");
       throw new Error("Error fetching chats");
     }
   }
@@ -484,7 +485,7 @@ export class MessageService {
 
       return updatedMessage;
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error marking message as viewed");
       throw new Error("Error marking message as viewed");
     }
   }
@@ -497,7 +498,7 @@ export class MessageService {
       const message = await Message.findById(messageId).select("views");
       return message?.views || [];
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching message views");
       throw new Error("Error fetching message views");
     }
   }
@@ -510,7 +511,7 @@ export class MessageService {
       const message = await Message.findById(messageId).select("views");
       return message?.views?.some((view: any) => view.userId === userId) || false;
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error checking if user viewed message");
       return false;
     }
   }

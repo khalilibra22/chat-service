@@ -7,6 +7,7 @@ import { UserService } from "../services/user.service";
 import { plainToInstance } from "class-transformer";
 import { MessageDto } from "../dtos/message.dto";
 import { GroupMessageData, SocketUser, GroupTypingData, SocketUserGroup } from "../types/chat.types";
+import logger from "../utils/logger";
 
 const messageService = new MessageService();
 const groupService = new GroupService();
@@ -18,10 +19,10 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
     const groupId = data?.groupId;
     const userId = socket.data.userId;
     if (!groupId) {
-      console.error(`No groupId provided for join-group event by user ${userId}`);
+      logger.error(`No groupId provided for join-group event by user ${userId}`);
       return;
     }
-    console.log(`Socket ${socket.id} joining group ${groupId}`);
+    logger.info(`Socket ${socket.id} joining group ${groupId}`);
     //console.log(`User ID: ${userId}`);
     const isGroupMember = await groupService.isUserInGroup(
       userId,
@@ -29,13 +30,13 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
     );
     //console.log(`Is user ${userId} a group member: ${isGroupMember} for group ${groupId}`);
     if (!isGroupMember) {
-      console.error(
+      logger.error(
         `User ${userId} is not a member of group ${groupId}`
       );
       return;
     }
     socket.join(groupId);
-    console.log(`Socket ${socket.id} joined group ${groupId}`);
+    logger.info(`Socket ${socket.id} joined group ${groupId}`);
   });
 
   // Handle group message
@@ -77,7 +78,7 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
 
         //if (callback) callback({ success: true, message: messageDto });
       } catch (error) {
-        console.error("Group message error:", error);
+        logger.error({ err: error }, "Group message error");
         if (callback) callback({ error: "Failed to send message" });
       }
     });
@@ -139,7 +140,7 @@ export const groupChatHandler = (io: Server | Namespace, socket: Socket & { data
 
       if (callback) callback({ success: true, message: messageDto });
     } catch (error) {
-      console.error("Group message view error:", error);
+      logger.error({ err: error }, "Group message view error");
       if (callback) callback({ error: "Failed to mark message as viewed" });
     }
   });

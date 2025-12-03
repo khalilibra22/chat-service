@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import logger from "../utils/logger";
 
 const connectDB = async () => {
   try {
@@ -8,9 +9,9 @@ const connectDB = async () => {
     }
     const dbName = process.env.MONGO_DB || "chat";
     await mongoose.connect(mongoUri, { dbName });
-    console.log("Chat Database connected");
+    logger.info("Chat Database connected");
   } catch (error) {
-    console.error("DB connection error:", error);
+    logger.error({ err: error }, "DB connection error");
   }
 };
 

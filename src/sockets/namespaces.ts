@@ -2,6 +2,7 @@ import { Server, Namespace } from "socket.io";
 import { privateChatHandler } from "./private-chat.socket";
 import { groupChatHandler } from "./group-chat.socket";
 import { UserService } from "../services/user.service";
+import logger from "../utils/logger";
 
 export interface SocketVersion {
   version: string;
@@ -31,7 +32,7 @@ export const registerNamespaceHandlers = (namespace: Namespace, version: string)
 
   namespace.on("connection", async (socket) => {
     const user = socket.data.userId;
-    console.log(`[${version}] Socket connected: ${user} (${socket.id})`);
+    logger.info(`[${version}] Socket connected: ${user} (${socket.id})`);
 
     // Set user as online
     try {
@@ -43,7 +44,7 @@ export const registerNamespaceHandlers = (namespace: Namespace, version: string)
         isOnline: true,
       });
     } catch (error) {
-      console.error(`Error setting user ${user} online:`, error);
+      logger.error({ err: error }, `Error setting user ${user} online`);
     }
 
     // Register chat handlers
@@ -51,7 +52,7 @@ export const registerNamespaceHandlers = (namespace: Namespace, version: string)
     groupChatHandler(namespace, socket);
 
     socket.on("disconnect", async () => {
-      console.log(`[${version}] Socket ${socket.id} disconnected`);
+      logger.info(`[${version}] Socket ${socket.id} disconnected`);
 
       // Set user as offline
       try {
@@ -65,7 +66,7 @@ export const registerNamespaceHandlers = (namespace: Namespace, version: string)
           lastSeenAt: status.lastSeenAt,
         });
       } catch (error) {
-        console.error(`Error setting user ${user} offline:`, error);
+        logger.error({ err: error }, `Error setting user ${user} offline`);
       }
     });
   });

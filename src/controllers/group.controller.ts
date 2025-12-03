@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { GroupService } from "../services/group.service";
 import { GroupDto } from "../dtos/group.dto";
 import { plainToClass } from "class-transformer";
+import logger from "../utils/logger";
 
 export class GroupController {
   private groupService: GroupService;
@@ -17,25 +18,25 @@ export class GroupController {
         return;
       }
       const creatorId = userId;
-      
+
       // Ensure creator is in members array if not already present
       const membersList = Array.isArray(members) ? members : [];
       if (!membersList.includes(creatorId)) {
         membersList.push(creatorId);
       }
-      
+
       const groupData: any = { name, members: membersList };
       if (groupType) {
         groupData.groupType = groupType;
       }
-      
+
       const group = await this.groupService.createGroup(groupData);
-      
+
       // Transform the response using GroupDto
       const groupDto = plainToClass(GroupDto, group, { excludeExtraneousValues: true });
       res.status(201).json(groupDto);
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error creating chat group");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -44,7 +45,7 @@ export class GroupController {
     try {
       const userId = (req as any).user.id;
       const groups = await this.groupService.getUserGroups(userId);
-      
+
       // Transform the response using GroupDto
       const groupDtos = plainToClass(GroupDto, groups, {
         excludeExtraneousValues: true,
@@ -52,7 +53,7 @@ export class GroupController {
 
       res.status(200).json(groupDtos);
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching user groups");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -68,11 +69,11 @@ export class GroupController {
       }
 
       const group = await this.groupService.joinGroup(userId, groupId);
-      
+
       const groupDto = plainToClass(GroupDto, group, { excludeExtraneousValues: true });
       res.status(200).json(groupDto);
     } catch (error: any) {
-      console.error(error);
+      logger.error({ err: error }, "Error joining group");
       const message = error?.message || "Internal Server Error";
 
       const statusMap: Record<string, number> = {

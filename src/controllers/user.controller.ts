@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { UserService } from "../services/user.service";
+import logger from "../utils/logger";
 
 export class UserController {
   private userService: UserService;
@@ -27,7 +28,7 @@ export class UserController {
         createdAt: (user as any).createdAt,
       });
     } catch (error: any) {
-      console.error("Error creating user:", error);
+      logger.error({ err: error }, "Error creating user");
       const message = error?.message || "Internal Server Error";
 
       const statusMap: Record<string, number> = {
@@ -59,7 +60,7 @@ export class UserController {
         updatedAt: (user as any).updatedAt,
       });
     } catch (error: any) {
-      console.error("Error updating user:", error);
+      logger.error({ err: error }, "Error updating user");
       const message = error?.message || "Internal Server Error";
 
       const statusMap: Record<string, number> = {
@@ -84,7 +85,7 @@ export class UserController {
         lastSeenAt: status.lastSeenAt,
       });
     } catch (error: any) {
-      console.error("Error getting user status:", error);
+      logger.error({ err: error }, "Error getting user status");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -111,7 +112,7 @@ export class UserController {
 
       res.status(200).json(statusObject);
     } catch (error: any) {
-      console.error("Error getting bulk user status:", error);
+      logger.error({ err: error }, "Error getting bulk user status");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };

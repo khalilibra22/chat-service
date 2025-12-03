@@ -5,13 +5,14 @@ import cors from "cors";
 import connectDB from "../config/database";
 import { chatSocket } from "../sockets";
 import { v1Router } from "./app-v1";
+import logger from "../utils/logger";
 
 
 if (!process.env.JWT_SECRET) {
-  console.error("Missing JWT_SECRET env var");
+  logger.error("Missing JWT_SECRET env var");
 }
 if (!process.env.MONGO_URI) {
-  console.error("Missing MONGO_URI env var");
+  logger.error("Missing MONGO_URI env var");
 }
 
 connectDB();
@@ -45,4 +46,4 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5002;
-server.listen(PORT, () => console.log(`Chat Service running on port ${PORT}`));
+server.listen(PORT, () => logger.info(`Chat Service running on port ${PORT}`));
