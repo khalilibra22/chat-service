@@ -13,6 +13,10 @@ const groupSchema = new Schema(
       enum: ["one-on-one", "prerecorded", "group", "live"],
       default: "prerecorded",
     },
+    profilePicture: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

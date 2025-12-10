@@ -37,4 +37,7 @@ export class ChatDto {
 
   @Expose()
   displayImage?: string;
+
+  @Expose()
+  profilePicture?: string;
 }

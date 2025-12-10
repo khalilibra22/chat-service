@@ -12,6 +12,9 @@ export class GroupDto {
 
   @Expose()
   groupType?: string;
+
+  @Expose()
+  profilePicture?: string;
 }
 
 
