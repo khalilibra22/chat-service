@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Schema } from "joi";
+import logger from "./logger";
 
 class ValidationMiddleware {
   static validate(schema: Schema) {
@@ -14,7 +15,7 @@ class ValidationMiddleware {
         }
         next();
       } catch (err) {
-        console.error("Validation Middleware Error:", err);
+        logger.error({ err }, "Validation Middleware Error");
         res.status(500).json({ error: "Internal Server Error" });
       }
     };
@@ -32,7 +33,7 @@ class ValidationMiddleware {
         }
         callback();
       } catch (err) {
-        console.error("Socket Validation Error:", err);
+        logger.error({ err }, "Socket Validation Error");
         callback("Validation failed");
       }
     };

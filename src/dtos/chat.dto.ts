@@ -1,5 +1,6 @@
-import { Expose, Type } from "class-transformer";
+import { Expose, Transform, Type } from "class-transformer";
 import { MessageDto, UserProfileDto } from "./message.dto";
+import { getImageUrl } from "../utils";
 
 export class ChatDto {
 
@@ -37,4 +38,8 @@ export class ChatDto {
 
   @Expose()
   displayImage?: string;
+
+  @Expose()
+  @Transform(({ value }) => (value ? getImageUrl(value) : undefined))
+  profilePicture?: string;
 }

@@ -1,6 +1,7 @@
 import User, { IUser } from "../models/user.model";
 import { UserProfile, UserStatus } from "../types/chat.types";
 import redis from "../config/redis";
+import logger from "../utils/logger";
 
 export class UserService {
   private userServiceUrl: string;
@@ -36,7 +37,7 @@ export class UserService {
 
       return user;
     } catch (error) {
-      console.error(`Error creating user ${payload.userId}:`, error);
+      logger.error({ err: error }, `Error creating user ${payload.userId}`);
       throw error;
     }
   }
@@ -54,7 +55,7 @@ export class UserService {
       // If not in Redis, try local DB (as secondary cache) or fetch from service
       return this.getUserProfile(userId);
     } catch (error) {
-      console.error(`Redis error for user ${userId}:`, error);
+      logger.error({ err: error }, `Redis error for user ${userId}`);
       // Fallback to standard flow
       return this.getUserProfile(userId);
     }
@@ -89,7 +90,7 @@ export class UserService {
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.warn(`User ${userId} not found in user service`);
+          logger.warn(`User ${userId} not found in user service`);
           return null;
         }
         throw new Error(`User service responded with status ${response.status}`);
@@ -106,7 +107,7 @@ export class UserService {
         metadata: data.metadata || {},
       };
     } catch (error) {
-      console.error(`Error fetching user ${userId} from user service:`, error);
+      logger.error({ err: error }, `Error fetching user ${userId} from user service`);
       throw error;
     }
   }
@@ -163,12 +164,12 @@ export class UserService {
 
       return userProfile;
     } catch (error) {
-      console.error(`Error getting user profile for ${userId}:`, error);
+      logger.error({ err: error }, `Error getting user profile for ${userId}`);
 
       // If service fails, try to return cached data even if expired
       const cachedUser = await User.findByUserId(userId);
       if (cachedUser) {
-        console.warn(`Returning stale cache for user ${userId} due to service error`);
+        logger.warn(`Returning stale cache for user ${userId} due to service error`);
         return {
           userId: cachedUser.userId,
           name: cachedUser.name,
@@ -271,7 +272,7 @@ export class UserService {
 
       return updatedUser;
     } catch (error) {
-      console.error(`Error updating user ${payload.userId}:`, error);
+      logger.error({ err: error }, `Error updating user ${payload.userId}`);
       throw error;
     }
   }
@@ -298,9 +299,9 @@ export class UserService {
         { upsert: true }
       );
 
-      console.log(`User ${userId} is now online`);
+      logger.info(`User ${userId} is now online`);
     } catch (error) {
-      console.error(`Error setting user ${userId} online:`, error);
+      logger.error({ err: error }, `Error setting user ${userId} online`);
       throw error;
     }
   }
@@ -322,9 +323,9 @@ export class UserService {
         { upsert: true }
       );
 
-      console.log(`User ${userId} is now offline`);
+      logger.info(`User ${userId} is now offline`);
     } catch (error) {
-      console.error(`Error setting user ${userId} offline:`, error);
+      logger.error({ err: error }, `Error setting user ${userId} offline`);
       throw error;
     }
   }
@@ -354,7 +355,7 @@ export class UserService {
         lastSeenAt: user?.lastSeenAt,
       };
     } catch (error) {
-      console.error(`Error getting status for user ${userId}:`, error);
+      logger.error({ err: error }, `Error getting status for user ${userId}`);
       // Return offline status on error
       return {
         userId,
@@ -420,7 +421,7 @@ export class UserService {
 
       return statusMap;
     } catch (error) {
-      console.error(`Error getting bulk user status:`, error);
+      logger.error({ err: error }, "Error getting bulk user status");
       // Return empty map on error
       return new Map();
     }

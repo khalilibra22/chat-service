@@ -1,5 +1,6 @@
 import Group from "../models/group.model";
 import { Types } from "mongoose";
+import logger from "../utils/logger";
 
 export class GroupService {
   async createGroup(groupData: any): Promise<any> {
@@ -7,7 +8,7 @@ export class GroupService {
       const group = await Group.create(groupData);
       return group;
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error creating group");
       throw new Error("Error creating group");
     }
   }
@@ -16,7 +17,7 @@ export class GroupService {
       const groups = await Group.find({ members: userId });
       return groups;
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching user groups");
       throw new Error("Error fetching user groups");
     }
   }
@@ -29,7 +30,7 @@ export class GroupService {
       const exists = await Group.exists({ _id: groupId, members: userId });
       return !!exists;
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error checking group membership");
       throw new Error("Error checking group membership");
     }
   }
@@ -58,7 +59,7 @@ export class GroupService {
 
       return group;
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error joining group");
       throw error;
     }
   }

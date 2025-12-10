@@ -6,6 +6,7 @@ import { privateSocketMessageValidation } from "../validations/message.validatio
 import { plainToInstance } from "class-transformer";
 import { MessageDto } from "../dtos/message.dto";
 import { PrivateMessageData, SocketUser, PrivateTypingData } from "../types/chat.types";
+import logger from "../utils/logger";
 
 const messageService = new MessageService();
 const userService = new UserService();
@@ -14,7 +15,7 @@ export const privateChatHandler = (io: Server | Namespace, socket: Socket & { da
   // Join personal room
   socket.on("join", () => {
     socket.join(socket.data.userId);
-    console.log(`Socket ${socket.id} joined user room ${socket.data.userId}`);
+    logger.info(`Socket ${socket.id} joined user room ${socket.data.userId}`);
   });
 
   // Handle private message
@@ -57,7 +58,7 @@ export const privateChatHandler = (io: Server | Namespace, socket: Socket & { da
 
         //if (callback) callback({ success: true, message });
       } catch (error) {
-        console.error("Private message error:", error);
+        logger.error({ err: error }, "Private message error");
         if (callback) callback({ error: "Failed to send message" });
       }
     });
@@ -121,7 +122,7 @@ export const privateChatHandler = (io: Server | Namespace, socket: Socket & { da
 
       if (callback) callback({ success: true, message: messageDto });
     } catch (error) {
-      console.error("Message view error:", error);
+      logger.error({ err: error }, "Message view error");
       if (callback) callback({ error: "Failed to mark message as viewed" });
     }
   });

@@ -5,6 +5,7 @@ import { plainToInstance } from "class-transformer";
 import { GroupService } from "../services/group.service";
 import { ChatDto } from "../dtos/chat.dto";
 import { AllChatsResponse, ChatListResponse } from "../types/chat.types";
+import logger from "../utils/logger";
 
 export class MessageController {
   private messageService: MessageService;
@@ -31,7 +32,7 @@ export class MessageController {
       });
       res.status(201).json(messageDto);
     } catch (error: any) {
-      console.error("Error creating private message:", error);
+      logger.error({ err: error }, "Error creating private message");
       const message = error?.message || "Internal Server Error";
       const statusMap: Record<string, number> = {
         "Sender not found": 404,
@@ -67,7 +68,7 @@ export class MessageController {
       res.setHeader("X-Limit", limit.toString());
       res.status(200).json(messageDtos);
     } catch (error: any) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching private message history");
       const message = error?.message || "Internal Server Error";
       const statusMap: Record<string, number> = {
         "Sender not found": 404,
@@ -110,7 +111,7 @@ export class MessageController {
       res.setHeader("X-Limit", limit.toString());
       res.status(200).json(messageDtos);
     } catch (error: any) {
-      console.error(error);
+      logger.error({ err: error }, "Error fetching group message history");
       const message = error?.message || "Internal Server Error";
       const statusMap: Record<string, number> = {
         "Sender not found": 404,
@@ -142,7 +143,7 @@ export class MessageController {
       });
       res.status(201).json(messageDto);
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error creating group message");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -155,32 +156,32 @@ export class MessageController {
         Math.max(parseInt((req.query.limit as string) || "20", 10), 1),
         100
       );
-      
+
       const chats = await this.messageService.getAllChats(userId, page, limit);
-      
-      const privateChatDtos = chats.privateChats.map((chat: any) => 
+
+      const privateChatDtos = chats.privateChats.map((chat: any) =>
         plainToInstance(ChatDto, chat, { excludeExtraneousValues: true })
       );
-      
-      const groupChatDtos = chats.groupChats.map((chat: any) => 
+
+      const groupChatDtos = chats.groupChats.map((chat: any) =>
         plainToInstance(ChatDto, chat, { excludeExtraneousValues: true })
       );
-      
-      
+
+
       const chatDtos: ChatListResponse = {
         privateChats: privateChatDtos as any,
         groupChats: groupChatDtos as any,
         totalChats: privateChatDtos.length + groupChatDtos.length,
         totalUnread: chats.totalUnread || 0
       };
-      
+
       res.setHeader("X-Total-Count", (chats.total || 0).toString());
       res.setHeader("X-Page", page.toString());
       res.setHeader("X-Limit", limit.toString());
-      
+
       res.status(200).json(chatDtos);
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, "Error getting all chats");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -201,7 +202,7 @@ export class MessageController {
 
       res.status(200).json(messageDto);
     } catch (error) {
-      console.error("Error marking message as viewed:", error);
+      logger.error({ err: error }, "Error marking message as viewed");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -212,7 +213,7 @@ export class MessageController {
       const views = await this.messageService.getMessageViews(messageId);
       res.status(200).json({ views });
     } catch (error) {
-      console.error("Error fetching message views:", error);
+      logger.error({ err: error }, "Error fetching message views");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
@@ -221,7 +222,7 @@ export class MessageController {
     try {
       const { messageId } = req.params;
       const userId = (req as any).user.id;
-      
+
       const hasViewed = await this.messageService.hasUserViewedMessage(
         messageId,
         userId
@@ -229,7 +230,7 @@ export class MessageController {
 
       res.status(200).json({ viewed: hasViewed });
     } catch (error) {
-      console.error("Error checking message view status:", error);
+      logger.error({ err: error }, "Error checking message view status");
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
