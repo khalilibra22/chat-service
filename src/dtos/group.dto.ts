@@ -1,4 +1,5 @@
-import { Expose } from "class-transformer";
+import { Expose, Transform } from "class-transformer";
+import { getImageUrl } from "../utils";
 
 export class GroupDto {
   @Expose()
@@ -14,6 +15,7 @@ export class GroupDto {
   groupType?: string;
 
   @Expose()
+  @Transform(({ value }) => (value ? getImageUrl(value) : undefined))
   profilePicture?: string;
 }
 
