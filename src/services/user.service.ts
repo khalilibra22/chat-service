@@ -49,7 +49,10 @@ export class UserService {
     try {
       const cachedData = await redis.get(`user:${userId}`);
       if (cachedData) {
-        return JSON.parse(cachedData) as UserProfile;
+        const profile = JSON.parse(cachedData) as UserProfile;
+        const status = await this.getUserStatus(userId);
+        profile.isOnline = status.isOnline;
+        return profile;
       }
 
       // If not in Redis, try local DB (as secondary cache) or fetch from service
@@ -64,6 +67,10 @@ export class UserService {
   async getCachedUserProfiles(userIds: string[]): Promise<Map<string, UserProfile>> {
     const profiles = new Map<string, UserProfile>();
     const users = await User.find({ userId: { $in: userIds } });
+
+    // Get online statuses in bulk
+    const statuses = await this.getBulkUserStatus(userIds);
+
     users.forEach((user) => {
       profiles.set(user.userId, {
         userId: user.userId,
@@ -71,6 +78,7 @@ export class UserService {
         profileImageUrl: user.profileImageUrl,
         email: user.email,
         metadata: user.metadata,
+        isOnline: statuses.get(user.userId)?.isOnline || false,
       });
     });
     return profiles;
@@ -130,7 +138,10 @@ export class UserService {
       // Check Redis first (redundant if called from getCachedUserProfile but good for direct calls)
       const cachedData = await redis.get(`user:${userId}`);
       if (cachedData) {
-        return JSON.parse(cachedData) as UserProfile;
+        const profile = JSON.parse(cachedData) as UserProfile;
+        const status = await this.getUserStatus(userId);
+        profile.isOnline = status.isOnline;
+        return profile;
       }
 
       // Check local DB (secondary cache)
@@ -144,6 +155,9 @@ export class UserService {
           email: cachedUser.email,
           metadata: cachedUser.metadata,
         };
+        const status = await this.getUserStatus(userId);
+        profile.isOnline = status.isOnline;
+
         // Populate Redis
         await redis.set(`user:${userId}`, JSON.stringify(profile), "EX", this.cacheExpirySeconds);
         return profile;
@@ -155,6 +169,10 @@ export class UserService {
       if (!userProfile) {
         return null;
       }
+
+      // Add online status
+      const status = await this.getUserStatus(userId);
+      userProfile.isOnline = status.isOnline;
 
       // Update local DB
       await User.upsertProfile(userProfile);
@@ -170,12 +188,14 @@ export class UserService {
       const cachedUser = await User.findByUserId(userId);
       if (cachedUser) {
         logger.warn(`Returning stale cache for user ${userId} due to service error`);
+        const status = await this.getUserStatus(userId);
         return {
           userId: cachedUser.userId,
           name: cachedUser.name,
           profileImageUrl: cachedUser.profileImageUrl,
           email: cachedUser.email,
           metadata: cachedUser.metadata,
+          isOnline: status.isOnline,
         };
       }
 

@@ -56,6 +56,7 @@ export interface UserProfile {
   profileImageUrl?: string;
   email?: string;
   metadata?: Record<string, any>;
+  isOnline?: boolean;
 }
 
 // User status types
