@@ -92,7 +92,9 @@ export class MessageService {
         .skip((page - 1) * limit)
         .limit(limit)
         .sort({ timestamp: -1 });
-      return { items, total, page, limit };
+
+      const enrichedItems = await this.enrichMessagesWithProfiles(items);
+      return { items: enrichedItems, total, page, limit };
     } catch (error) {
       logger.error({ err: error }, "Error fetching private message history paginated");
       throw new Error("Error fetching private message history");
@@ -148,6 +150,7 @@ export class MessageService {
                   "senderProfile.name": 1,
                   "senderProfile.profileImageUrl": 1,
                   "senderProfile.email": 1,
+                  "senderProfile.isOnline": 1,
                 },
               },
             ],

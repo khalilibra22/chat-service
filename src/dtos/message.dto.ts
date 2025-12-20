@@ -22,6 +22,9 @@ export class UserProfileDto {
 
   @Expose()
   email?: string;
+
+  @Expose()
+  isOnline?: boolean;
 }
 
 export class MessageDto {
