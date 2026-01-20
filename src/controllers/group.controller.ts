@@ -12,7 +12,7 @@ export class GroupController {
 
   createChatGroup = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { name, members = [], groupType, userId } = req.body;
+      const { name, members = [], groupType, userId, profilePicture } = req.body;
       if (!userId) {
         res.status(400).json({ error: "User ID is required" });
         return;
@@ -28,6 +28,9 @@ export class GroupController {
       const groupData: any = { name, members: membersList };
       if (groupType) {
         groupData.groupType = groupType;
+      }
+      if (profilePicture) {
+        groupData.profilePicture = profilePicture;
       }
 
       const group = await this.groupService.createGroup(groupData);
