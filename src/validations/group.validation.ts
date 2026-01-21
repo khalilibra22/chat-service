@@ -21,4 +21,5 @@ export const createGroupValidation = Joi.object({
       "any.only":
         "Group type must be one of: one-on-one, prerecorded, group, live",
     }),
+  profilePicture: Joi.string().optional().allow("", null),
 });
