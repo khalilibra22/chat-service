@@ -109,7 +109,7 @@ export class UserService {
       // Map the response to our UserProfile interface
       return {
         userId: data.id || data.userId || userId,
-        name: data.name || data.username || "Unknown User",
+        name: data.fullname || data.name || data.username || "Unknown User",
         profileImageUrl: data.profileImageUrl || data.avatar || data.profileImage,
         email: data.email,
         metadata: data.metadata || {},
