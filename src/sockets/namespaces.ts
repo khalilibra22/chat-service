@@ -16,6 +16,18 @@ export const SOCKET_VERSIONS: SocketVersion[] = [
     path: "/ws/v1",
     description: "Initial Socket.IO API version with private and group chat support",
   },
+  {
+    // API Gateway prefixed namespace - clients connecting via http://localhost/chat-service/ws/v1
+    version: "v1",
+    path: "/chat-service/ws/v1",
+    description: "API Gateway alias for /ws/v1",
+  },
+  {
+    // Root namespace alias - supports clients that connect without specifying a namespace
+    version: "v1",
+    path: "/",
+    description: "Root namespace alias for /ws/v1",
+  },
   // Future versions can be added here:
   // {
   //   version: "v2",
