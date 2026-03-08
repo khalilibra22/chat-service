@@ -14,7 +14,7 @@ router.post(
   groupController.createChatGroup
 );
 
-router.get("/", AuthMiddleware.verifyToken, groupController.getUserGroups);
+router.get("/user/:userId", groupController.getUserGroups);
 
 router.post("/:groupId/join", groupController.joinGroup);
 
