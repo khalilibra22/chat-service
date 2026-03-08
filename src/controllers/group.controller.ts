@@ -46,7 +46,11 @@ export class GroupController {
 
   getUserGroups = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.params.userId;
+      if (!userId) {
+        res.status(400).json({ error: "User ID is required" });
+        return;
+      }
       const groups = await this.groupService.getUserGroups(userId);
 
       // Transform the response using GroupDto
